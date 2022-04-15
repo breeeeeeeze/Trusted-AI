@@ -20,6 +20,9 @@ logging.basicConfig(filename=config['logFile'],
 client = discord.Client()
 
 def exportMessage(message):
+	if not os.path.exists(config['exportFile']):
+		with open(config['exportFile'], 'w') as f:
+			f.write('message_content,channel_id,author_id\n')
 	with open(config['exportFile'], 'a', encoding='utf-8') as f:
 		f.write(f'"{message.content}",{str(message.channel.id)},{str(message.author.id)}\n')
 	return f'Message logged by {colorize(f"{message.author.name}#{message.author.discriminator}", "OKBLUE")} in {colorize(f"#{message.channel.name}", "OKCYAN")}'
