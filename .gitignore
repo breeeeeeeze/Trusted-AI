@@ -2,3 +2,4 @@
 config.json
 export.csv
 __pycache__/
+*.log

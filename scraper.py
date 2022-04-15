@@ -22,7 +22,7 @@ client = discord.Client()
 def exportMessage(message):
 	with open(config['exportFile'], 'a', encoding='utf-8') as f:
 		f.write(f'"{message.content}",{str(message.channel.id)},{str(message.author.id)}\n')
-	return f'Message logged by {colorize(message.author.name, "OKBLUE")} in {colorize(message.channel.name, "OKCYAN")}'
+	return f'Message logged by {colorize(f"{message.author.name}#{message.author.discriminator}", "OKBLUE")} in {colorize(f"#{message.channel.name}", "OKCYAN")}'
 
 @client.event
 async def on_ready():
@@ -38,7 +38,7 @@ async def on_message(message):
 		return
 	try:
 		exported = exportMessage(message)
-		logging.log(logging.INFO, exported, 'OKGREEN')
+		logging.log(logging.INFO, exported)
 	except Exception:
 		logging.log(logging.WARNING, colorize(f'Failed to export message: {message.id}', 'WARNING'))
 
