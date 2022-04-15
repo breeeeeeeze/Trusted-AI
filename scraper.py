@@ -5,19 +5,24 @@ import discord
 from dotenv import load_dotenv
 from colorer import colorize
 
-logging.basicConfig(level=logging.INFO, format='\u001b[35;1m[%(asctime)s]\u001b[0m[%(name)s][%(levelname)s] %(message)s')
 load_dotenv()
+
+def loadConfig():
+	with open('config.json') as f:
+		return json.load(f)
+config = loadConfig()
+
+logging.basicConfig(filename=config['logFile'],
+						filemode='a',
+						level=logging.INFO,
+						format='\u001b[35;1m[%(asctime)s]\u001b[0m[%(name)s][%(levelname)s] %(message)s')
+
 client = discord.Client()
 
 def exportMessage(message):
 	with open(config['exportFile'], 'a', encoding='utf-8') as f:
 		f.write(f'"{message.content}",{str(message.channel.id)},{str(message.author.id)}\n')
-
-def loadConfig():
-	with open('config.json') as f:
-		return json.load(f)
-
-config = loadConfig()
+	return f'Message logged by {colorize(message.author.name, "OKBLUE")} in {colorize(message.channel.name, "OKCYAN")}'
 
 @client.event
 async def on_ready():
@@ -32,7 +37,8 @@ async def on_message(message):
 		or not message.content: 
 		return
 	try:
-		exportMessage(message)
+		exported = exportMessage(message)
+		logging.log(logging.INFO, exported, 'OKGREEN')
 	except Exception:
 		logging.log(logging.WARNING, colorize(f'Failed to export message: {message.id}', 'WARNING'))
 
