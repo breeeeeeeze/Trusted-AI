@@ -1,0 +1,4 @@
+.env
+config.json
+export.csv
+__pycache__/
