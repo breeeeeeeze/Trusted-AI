@@ -2,5 +2,6 @@
 	"serverID": "123456789",
 	"channelIDs": ["123456789", "987654321"],
 	"exportFile": "export.csv",
-	"logFile": "scraper.log"
+	"logFile": "scraper.log",
+	"opUserID": "123456789"
 }
