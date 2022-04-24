@@ -2,32 +2,33 @@ import datetime
 import json
 import os
 import logging
-from colorer import colorize
 
-def loadConfig():
-	with open('../config.json') as f:
-		return json.load(f)
-config = loadConfig()
+from utils.colorer import colorize
+from utils.configReader import readConfig
+
+config = readConfig()
 
 logger = logging.getLogger('discord.Scraper')
 
 class Scraper:
 
-	@classmethod
-	def exportMessage(cls, message):
+	@staticmethod
+	def exportMessage(message):
 		try:
-			if not str(message.guild.id) == config['serverID'] \
-				or not str(message.channel.id) in config['channelIDs'] \
-				or message.author.bot \
-				or not message.content \
+			if not message.content \
 				or message.content.startswith('ai.'): 
 				return
 			fileName = Scraper.getFileName()
 			if not os.path.exists(fileName):
 				with open(fileName, 'w') as f:
-					f.write('message_content,channel_id,author_id,has_attachment\n')
+					f.write('ID,Contents,ChannelID,AuthorID,Attachments\n')
+			content = message.content
+			channelID = str(message.channel.id)
+			authorID = str(message.author.id)
+			attachment = str(message.attachments[0]) if message.attachments else ''
+			messageID = str(message.id)
 			with open(fileName, 'a', encoding='utf-8') as f:
-				f.write(f'"{message.content}",{str(message.channel.id)},{str(message.author.id)},{str(bool(message.attachments))}\n')
+				f.write(f'{messageID},"{content}",{channelID},{authorID},{attachment}\n')
 			return logger.log(logging.INFO, f'Message logged by {colorize(f"{message.author.name}#{message.author.discriminator}", "OKBLUE")} in {colorize(f"#{message.channel.name}", "OKCYAN")}')
 		except Exception:
 			return logger.log(logging.WARNING, colorize(f'Failed to export message: {message.id}', 'WARNING'))

@@ -1,18 +1,16 @@
-import json
 import os
 import logging
+
 import discord
 from dotenv import load_dotenv
-from colorer import colorize
-from scraper import Scraper
-import events
+
+from utils.colorer import colorize
+import bot.events as events
+from utils.configReader import readConfig
 
 load_dotenv()
 
-def loadConfig():
-	with open('../config.json') as f:
-		return json.load(f)
-config = loadConfig()
+config = readConfig()
 
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
