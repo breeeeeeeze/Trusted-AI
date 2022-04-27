@@ -3,5 +3,32 @@
 	"channelIDs": ["123456789", "987654321"],
 	"exportFile": "export.csv",
 	"logFile": "scraper.log",
-	"opUserID": "123456789"
+	"opUserID": "123456789",
+	"training": {
+		"data": {
+			"inputFiles": ["export.csv"],
+			"removeRowIfAttachment": true,
+			"filterDiscordEmotes": true,
+			"filterVanillaEmoji": true,
+			"filterPings": true,
+			"filterChannels": true,
+			"filterLinks": true,
+			"filterMarkdown": true,
+			"filterCustomChars": false,
+			"customChars": "Їǖǝǿȧɔλабвгдежз"
+		},
+		"learn": {
+			"batchSize": 128,
+			"nUnits": 512,
+			"seqLength": 50,
+			"bufferSize": 10000,
+			"nEpochs": 50,
+			"verbose": 1,
+			"embeddingSize": 256,
+			"optimizer": "adam",
+			"checkpointPath": "checkpoints/",
+			"checkpointPrefix": "checkpoint",
+			"checkpointFreq": 50
+		}
+	}
 }

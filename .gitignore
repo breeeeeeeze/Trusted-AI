@@ -11,10 +11,13 @@ data/
 *.zip
 
 # temporary stuff
-one_step/
 prototype stuff/
-training_checkpoints/
+
 main.ipynb
+
+# model checkpoints
+training_checkpoints/
+checkpoint*/
 
 # logs
 *.log

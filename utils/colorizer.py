@@ -9,6 +9,6 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+
 def colorize(text, color):
-	return f'{bcolors.__dict__[color]}{text}{bcolors.ENDC}'
-	
+    return f'{bcolors.__dict__[color]}{text}{bcolors.ENDC}'
