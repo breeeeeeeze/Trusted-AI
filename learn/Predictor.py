@@ -18,13 +18,15 @@ class Predictor(tf.keras.Model):
         self.skipMask = tf.sparse.to_dense(sparseMask)
 
     @tf.function
-    def predictNextChar(self, inputs, states=None):
+    def predictNextChar(self, inputs, states=None, temperature=None):
+        if not temperature:
+            temperature = self.temperature
         inputChars = tf.strings.unicode_split(inputs, 'UTF-8')
         inputIDs = self.charToID(inputChars).to_tensor()
 
         predictedLogits, states = self.model(inputIDs, states=states, returnState=True)
         predictedLogits = predictedLogits[:, -1, :]
-        predictedLogits /= self.temperature
+        predictedLogits /= temperature
         predictedLogits += self.skipMask
 
         predictedIDs = tf.random.categorical(predictedLogits, num_samples=1)

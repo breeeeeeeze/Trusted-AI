@@ -8,7 +8,12 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+    MAGENTA = '\033[35m'
+    GREEN = '\033[32m'
+    BLUE = '\033[34m'
+    BACKGROUND_WHITE = '\033[47m'
 
 
-def colorize(text, color):
-    return f'{bcolors.__dict__[color]}{text}{bcolors.ENDC}'
+def colorize(text, *colors):
+    colorString = ''.join(getattr(bcolors, color) for color in colors)
+    return f'{colorString}{text}{bcolors.ENDC}'

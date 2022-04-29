@@ -1,30 +1,39 @@
 import logging
-import os
+from os import path
+from importlib import import_module
+from pickle import dump
 
 import tensorflow as tf
 
-from learn.RNNModel import RNNModel
 from learn.Predictor import Predictor
 from utils.configReader import readConfig
 from utils.colorizer import colorize
 
 config = readConfig()
+config = config['training']['learn']
 logger = logging.getLogger('ai.learn.trustedrnn')
 
 
 class TrustedRNN:
-    def __init__(self, vocab, text=None):
-        self.batchSize = config['training']['learn']['batchSize']
-        self.nUnits = config['training']['learn']['nUnits']
-        self.seqLength = config['training']['learn']['seqLength']
-        self.bufferSize = config['training']['learn']['bufferSize']
-        self.nEpochs = config['training']['learn']['nEpochs']
-        self.verbose = config['training']['learn']['verbose']
-        self.embeddingSize = config['training']['learn']['embeddingSize']
-        self.optimizer = config['training']['learn']['optimizer']
-        self.checkpointPath = config['training']['learn']['checkpointPath']
-        self.checkpointPrefix = config['training']['learn']['checkpointPrefix']
-        self.checkpointFreq = config['training']['learn']['checkpointFreq']
+    def __init__(self, vocab, text=None, runName='', modelType=None, loadFromWeights=False):
+        # janky way to dynamically import the RNN model
+        if not modelType:
+            modelType = config['model']
+        self.RNNModel = import_module(f'learn.models.{modelType}')
+        self.RNNModel = self.RNNModel.RNNModel
+
+        self.runName = runName
+        self.batchSize = config['batchSize']
+        self.nUnits = config['nUnits']
+        self.seqLength = config['seqLength']
+        self.bufferSize = config['bufferSize']
+        self.nEpochs = config['nEpochs']
+        self.verbose = config['verbose']
+        self.embeddingSize = config['embeddingSize']
+        self.optimizer = config['optimizer']
+        self.checkpointPath = config['checkpointPath']
+        self.checkpointPrefix = config['checkpointPrefix'] + '_' + self.runName
+        self.checkpointFreq = config['checkpointFreq']
         self.text = text
         self.vocab = vocab
         self.dataset = None
@@ -38,6 +47,15 @@ class TrustedRNN:
             vocabulary=self.charToID.get_vocabulary(),
             invert=True,
             mask_token=None)
+
+        if loadFromWeights and self.runName:
+            self.loadWithWeights()
+
+    def loadWithWeights(self):
+        logger.debug('Loading model with weights')
+        self.makeModel()
+        self.loadModelWeights(self.checkpointPrefix)
+        self.makePredictor()
 
     def makeDataset(self):
         if not self.text:
@@ -59,13 +77,12 @@ class TrustedRNN:
         logger.info(f'{colorize("Dataset created", "OKGREEN")}')
 
     def makeModel(self):
-        self.model = RNNModel(
+        self.model = self.RNNModel(
             len(self.charToID.get_vocabulary()),
             self.embeddingSize,
             self.nUnits)
-        for i, _ in self.dataset.take(1):
-            _ = self.model(i)
-        print(self.model.summary())
+        self.model.build(input_shape=(self.batchSize, self.seqLength))
+        self.model.summary()
         self.model.compile(optimizer=self.optimizer, loss=self.loss(), metrics=['accuracy'])
         logger.info(f'{colorize("Model created", "OKGREEN")}')
 
@@ -74,14 +91,15 @@ class TrustedRNN:
         return tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
     def checkpointCallback(self):
-        saveFreq = len(self.dataset) * self.checkpointFreq
-        filepath = os.path.join(
+        filepath = path.join(
             self.checkpointPath,
             self.checkpointPrefix)
         return tf.keras.callbacks.ModelCheckpoint(
             filepath=filepath,
+            monitor='accuracy',
+            save_best_only=True,
             save_weights_only=True,
-            save_freq=saveFreq)
+        )
 
     def trainModel(self):
         if not self.model or not self.dataset:
@@ -98,11 +116,21 @@ class TrustedRNN:
         if not self.model:
             logger.error(f'{colorize("Model not created", "FAIL")}')
             return
-        filepath = os.path.join(
+        filepath = path.join(
             self.checkpointPath,
             filename)
         self.model.save_weights(filepath)
         logger.info(f'{colorize("Model weights saved", "OKBLUE")}')
+
+    def loadModelWeights(self, filename):
+        if not self.model:
+            logger.error(f'{colorize("Model not created", "FAIL")}')
+            return
+        filepath = path.join(
+            self.checkpointPath,
+            filename)
+        self.model.load_weights(filepath).expect_partial()
+        logger.info(f'{colorize("Model weights loaded", "OKBLUE")}')
 
     def makePredictor(self):
         if not self.model:
@@ -111,17 +139,26 @@ class TrustedRNN:
         self.predictor = Predictor(self.model, self.IDToChar, self.charToID)
         logger.info(f'{colorize("Predictor created", "OKGREEN")}')
 
-    def predict(self, seed):
+    def pickleHistory(self, filename):
+        if not self.history:
+            string = 'History doesn\'t exist, train the model first'
+            logger.error(f'{colorize(string, "FAIL")}')
+            return
+        dump(self.history, filename)
+
+    async def predict(self, seed, temperature=None):
         states = None
         nextChar = tf.constant([seed])
         result = []
 
         for _ in range(1000):
-            nextChar, states = self.predictor.predictNextChar(nextChar, states)
+            nextChar, states = self.predictor.predictNextChar(nextChar,
+                                                              states,
+                                                              temperature=temperature)
             result.append(nextChar)
             if len(result) > 2 and nextChar == '\n':
                 break
 
-        result = (seed + tf.strings.join(result))[0].numpy().decode('utf-8')
-        logger.info(f'{colorize("Prediction:", "OKGREEN")} {colorize(result, "OKCYAN")}')
+        result = (seed + tf.strings.join(result))[0].numpy().decode('utf-8').strip()
+        logger.debug(f'{colorize("Prediction:", "OKGREEN")} {colorize(result, "OKCYAN")}')
         return result

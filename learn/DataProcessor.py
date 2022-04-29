@@ -29,12 +29,32 @@ class DataProcessor:
         logger.info(f'{colorize("Data imported and processed", "OKGREEN")}')
         return self.text, self.vocab
 
+    def getVocab(self):
+        if self.vocab:
+            return self.vocab
+        self.processInputData()
+        return self.vocab
+
+    def exportVocab(self, fileName):
+        with open(fileName, 'w', encoding='utf-8') as f:
+            for word in self.vocab:
+                f.write(word)
+        logger.debug('Vocabulary exported.')
+
+    def importVocab(self, fileName):
+        with open(fileName, 'r', encoding='utf-8') as f:
+            self.vocab = list(f.read())
+        logger.debug('Vocabulary imported.')
+        return self.vocab
+
     def importData(self):
         listOfDFs = []
         for fileGlob in config['training']['data']['inputFiles']:
             for fileName in glob.glob(f'data/{fileGlob}'):
                 listOfDFs.append(pd.read_csv(fileName))
         self.dataframe = pd.concat(listOfDFs)
+        if 'Contents' not in self.dataframe.columns:
+            raise Exception('Contents column not found in dataframe.')
         logger.debug('Data imported.')
 
     def dropColumns(self):
@@ -62,7 +82,7 @@ class DataProcessor:
             string = string.lower()
         # filter discord emotes
         if config['training']['data']['filterDiscordEmotes']:
-            string = re.sub(r'<:[a-zA-Z0-9_]+?:\d{18}>', '', string)
+            string = re.sub(r'<a?:[a-zA-Z0-9_]+?:\d{18}>', '', string)
         # filter emoji
         # FIXME check why this isnt working
         if config['training']['data']['filterVanillaEmoji']:
@@ -87,7 +107,9 @@ class DataProcessor:
             string = re.sub(r'(\|\|(?=[^\n]*\|\|))|((?<=\|\|[^\n]*)\|\|)', '', string)  # spoiler
             string = re.sub(r'(```(?=[^\n]*```))|((?<=```[^\n]*)```)', '', string)  # code block
             string = re.sub(r'(`(?=[^\n]*`))|((?<=`[^\n]*)`)', '', string)  # inline code
-        if config['training']['data']['filterCustomChars']:
+        if config['training']['data']['onlyKeepAllowedChars']:
+            string = re.sub(rf'[^{config["training"]["data"]["allowedChars"]}]', '', string)  # noqa: E501
+        elif config['training']['data']['filterCustomChars']:
             string = re.sub(rf'[{config["training"]["data"]["customChars"]}]', '', string)
         return string
 

@@ -1,6 +1,7 @@
 # config stuff
 .env
 config.json
+.vscode/
 
 # cache
 __pycache__/
@@ -9,15 +10,17 @@ __pycache__/
 export*.csv
 data/
 *.zip
+vocab/
 
 # temporary stuff
 prototype stuff/
-
+*_test*
 main.ipynb
 
 # model checkpoints
 training_checkpoints/
 checkpoint*/
+history/
 
 # logs
 *.log

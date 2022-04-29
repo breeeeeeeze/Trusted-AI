@@ -1,34 +1,56 @@
 {
-	"serverID": "123456789",
-	"channelIDs": ["123456789", "987654321"],
-	"exportFile": "export.csv",
-	"logFile": "scraper.log",
-	"opUserID": "123456789",
+	"serverID": "",
+	"channelIDs": [""],
+	"exportFile": "export-{date}.csv",
+	"logFile": "log.txt",
+	"ownerID": "",
 	"training": {
 		"data": {
-			"inputFiles": ["export.csv"],
-			"removeRowIfAttachment": true,
-			"filterDiscordEmotes": true,
+			"inputFiles": ["messages.csv"],
+			"removeRowIfAttachment": false,
+			"onlyLowercase": true,
+			"filterDiscordEmotes": false,
 			"filterVanillaEmoji": true,
-			"filterPings": true,
-			"filterChannels": true,
+			"filterPings": false,
+			"filterChannels": false,
 			"filterLinks": true,
 			"filterMarkdown": true,
 			"filterCustomChars": false,
-			"customChars": "Їǖǝǿȧɔλабвгдежз"
+			"onlyKeepAllowedChars": true,
+			"allowedChars": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.:;,!?'()[]{}<>@#$%^&*+|\\/~`ćčžđšäöüß€",
+			"customChars": "ћ"
 		},
 		"learn": {
-			"batchSize": 128,
-			"nUnits": 512,
+			"model": "GRU_1layer",
+			"batchSize": 256,
 			"seqLength": 50,
 			"bufferSize": 10000,
-			"nEpochs": 50,
-			"verbose": 1,
+			"nUnits": 1024,
+			"nEpochs": 200,
+			"verbose": 2,
 			"embeddingSize": 256,
 			"optimizer": "adam",
 			"checkpointPath": "checkpoints/",
 			"checkpointPrefix": "checkpoint",
 			"checkpointFreq": 50
+		},
+		"run": {
+			"pickleHistory": true,
+			"vocabPath": "vocab/",
+			"runName": "train"
+		}
+	},
+	"prediction": {
+		"models": ["train"],
+		"vocabPath": "vocab/vocab_{runName}",
+		"weightsPath": "checkpoints/checkpoint_{runName}",
+		"bannedWords": [""]
+	},
+	"bot": {
+		"strings": {
+			"commandHandler.predictionError": "Prediction error",
+			"commandHandler.invalidTemperature": "Temperature needs to be a float",
+			"commandHandler.bannedWord": "Prediction generated a banned word"
 		}
 	}
 }
