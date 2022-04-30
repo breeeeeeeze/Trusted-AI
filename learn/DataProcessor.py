@@ -108,7 +108,7 @@ class DataProcessor:
             string = re.sub(r'(```(?=[^\n]*```))|((?<=```[^\n]*)```)', '', string)  # code block
             string = re.sub(r'(`(?=[^\n]*`))|((?<=`[^\n]*)`)', '', string)  # inline code
         if config['training']['data']['onlyKeepAllowedChars']:
-            string = re.sub(rf'[^{config["training"]["data"]["allowedChars"]}]', '', string)  # noqa: E501
+            string = re.sub(rf'[^{config["training"]["data"]["allowedChars"]}]', '', string)
         elif config['training']['data']['filterCustomChars']:
             string = re.sub(rf'[{config["training"]["data"]["customChars"]}]', '', string)
         return string

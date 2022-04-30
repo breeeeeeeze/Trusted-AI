@@ -15,6 +15,7 @@ vocab/
 # temporary stuff
 prototype stuff/
 *_test*
+test.py
 main.ipynb
 
 # model checkpoints
