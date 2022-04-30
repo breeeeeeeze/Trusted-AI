@@ -21,6 +21,7 @@ main.ipynb
 training_checkpoints/
 checkpoint*/
 history/
+cp*/
 
 # logs
 *.log

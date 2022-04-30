@@ -8,7 +8,7 @@ class RNNModel(Model):
         self.embedding = Embedding(vocabSize, embeddingSize)
         self.gru_1 = GRU(nUnits, return_sequences=True, return_state=True)
         self.dropout = Dropout(0.2)
-        self.gru_2 = GRU(nUnits * 2, return_sequences=True, return_state=True)
+        self.gru_2 = GRU(nUnits, return_sequences=True, return_state=True)
         self.dense = Dense(vocabSize)
 
     def call(self, inputs, states=None, returnState=False, training=False):

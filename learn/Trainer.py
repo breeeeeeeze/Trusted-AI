@@ -22,12 +22,16 @@ class Trainer:
             logger.info(colorize('Starting full training sequence', 'BLUE', 'BACKGROUND_WHITE'))
             text, vocab = self.dp.processInputData()
             self.dp.exportVocab(f'{config["vocabPath"]}vocab_{config["runName"]}.txt')
-            self.rnn = TrustedRNN(vocab, text)
+            logger.info(colorize(
+                'Data processing completed. Starting training...', 'BLUE', 'BACKGROUND_WHITE'))
+            self.rnn = TrustedRNN(vocab, text, runName=config['runName'])
             self.rnn.makeDataset()
             self.rnn.makeModel()
             self.rnn.trainModel()
+            logger.info(colorize(
+                'Finished training, saving results...', 'BLUE', 'BACKGROUND_WHITE'))
             self.rnn.saveModelWeights(f'final_weights_{config["runName"]}')
-            if config['training']['pickleHistory']:
+            if config['run']['pickleHistory']:
                 self.rnn.pickleHistory(f'history_{config["runName"]}')
         except Exception:
             logger.error(colorize(f'{Exception}', 'FAIL'))

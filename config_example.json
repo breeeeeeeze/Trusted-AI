@@ -41,7 +41,10 @@
 		}
 	},
 	"prediction": {
-		"models": ["train"],
+		"models": [{
+			"name": "train",
+			"model": "LSTM_1layer"
+		}],
 		"vocabPath": "vocab/vocab_{runName}",
 		"weightsPath": "checkpoints/checkpoint_{runName}",
 		"bannedWords": [""]
@@ -51,6 +54,7 @@
 			"commandHandler.predictionError": "Prediction error",
 			"commandHandler.invalidTemperature": "Temperature needs to be a float",
 			"commandHandler.bannedWord": "Prediction generated a banned word"
-		}
+		},
+		"commandCooldown": 5
 	}
 }
