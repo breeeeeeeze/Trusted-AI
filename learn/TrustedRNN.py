@@ -101,6 +101,20 @@ class TrustedRNN:
             save_weights_only=True,
         )
 
+    def earlyStoppingCallback(self):
+        return tf.keras.callbacks.EarlyStopping(
+            monitor=config['earlyStopping']['monitor'],
+            patience=config['earlyStopping']['patience'],
+            restore_best_weights=config['earlyStopping']['restoreBestWeights']
+        )
+
+    def getCallbacks(self):
+        callbacks = []
+        callbacks.append(self.checkpointCallback())
+        if config['earlyStopping']['useEarlyStopping']:
+            callbacks.append(self.earlyStoppingCallback())
+        return callbacks
+
     def trainModel(self):
         if not self.model or not self.dataset:
             logger.error(f'{colorize("Model or dataset not created", "FAIL")}')
@@ -109,7 +123,7 @@ class TrustedRNN:
         self.history = self.model.fit(
             self.dataset,
             epochs=self.nEpochs,
-            callbacks=[self.checkpointCallback()],
+            callbacks=[self.getCallbacks()],
             verbose=self.verbose)
 
     def saveModelWeights(self, filename):

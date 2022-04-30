@@ -32,7 +32,13 @@
 			"optimizer": "adam",
 			"checkpointPath": "checkpoints/",
 			"checkpointPrefix": "checkpoint",
-			"checkpointFreq": 50
+			"checkpointFreq": 50,
+			"earlyStopping": {
+				"useEarlyStopping": true,
+				"patience": 5,
+				"monitor": "accuracy",
+				"restoreBestWeights": true
+			}
 		},
 		"run": {
 			"pickleHistory": true,

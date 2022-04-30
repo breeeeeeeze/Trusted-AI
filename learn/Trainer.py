@@ -33,6 +33,6 @@ class Trainer:
             self.rnn.saveModelWeights(f'final_weights_{config["runName"]}')
             if config['training']['run']['pickleHistory']:
                 self.rnn.pickleHistory(f'history_{config["runName"]}')
-        except Exception:
-            logger.error(colorize(f'{Exception}', 'FAIL'))
+        except Exception as err:
+            logger.error(colorize(f'{err}', 'FAIL'))
             raise
