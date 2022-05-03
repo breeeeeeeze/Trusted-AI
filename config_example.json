@@ -21,7 +21,8 @@
 			"customChars": "ћ"
 		},
 		"learn": {
-			"model": "GRU_1layer",
+			"model": "LSTM_1layer",
+			"layers": 2,
 			"batchSize": 256,
 			"seqLength": 50,
 			"bufferSize": 10000,
@@ -43,12 +44,12 @@
 		"run": {
 			"pickleHistory": true,
 			"vocabPath": "vocab/",
-			"runName": "train"
+			"runName": "testrun"
 		}
 	},
 	"prediction": {
 		"models": [{
-			"name": "train",
+			"name": "testrun",
 			"model": "LSTM_1layer"
 		}],
 		"vocabPath": "vocab/vocab_{runName}",

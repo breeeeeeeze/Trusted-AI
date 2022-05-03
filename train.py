@@ -1,14 +1,7 @@
-import logging
-
 from learn.Trainer import Trainer
+from utils.setupLogger import setupLogger
 
-logger = logging.getLogger('ai')
-logger.setLevel(logging.DEBUG)
-consoleHandler = logging.StreamHandler()
-consoleHandler.setLevel(logging.DEBUG)
-consoleHandler.setFormatter(
-    logging.Formatter('\u001b[35;1m[%(asctime)s]\u001b[0m[%(name)s][%(levelname)s] %(message)s'))
-logger.addHandler(consoleHandler)
+setupLogger('ai', 'DEBUG')
 
 trainer = Trainer()
 trainer.run()

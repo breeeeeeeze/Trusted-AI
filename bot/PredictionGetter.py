@@ -45,4 +45,7 @@ class PredictionGetter:
     @staticmethod
     async def predict(modelName, seed, temperature):
         logger.debug(f'Predicting {modelName} with seed {seed} and temperature {temperature}')
-        return await PredictionGetter.models[modelName].predict(seed, temperature)
+        prediction = await PredictionGetter.models[modelName].predict(seed, temperature)
+        if prediction.startswith('\n'):
+            prediction = prediction[1:]
+        return prediction

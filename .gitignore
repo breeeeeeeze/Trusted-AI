@@ -17,6 +17,7 @@ prototype stuff/
 *_test*
 test.py
 main.ipynb
+test.ipynb
 
 # model checkpoints
 training_checkpoints/
@@ -27,3 +28,5 @@ cp*/
 # logs
 *.log
 log.txt
+tb_logs/
+history*

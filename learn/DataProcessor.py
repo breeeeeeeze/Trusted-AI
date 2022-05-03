@@ -29,6 +29,10 @@ class DataProcessor:
         logger.info(f'{colorize("Data imported and processed", "OKGREEN")}')
         return self.text, self.vocab
 
+    def slimTo(self, n):
+        # useful for debugging
+        self.dataframe = self.dataframe[:n]
+
     def getVocab(self):
         if self.vocab:
             return self.vocab
@@ -43,7 +47,7 @@ class DataProcessor:
 
     def importVocab(self, fileName):
         with open(fileName, 'r', encoding='utf-8') as f:
-            self.vocab = list(f.read())
+            self.vocab = sorted(set(f.read()))
         logger.debug('Vocabulary imported.')
         return self.vocab
 
@@ -71,7 +75,8 @@ class DataProcessor:
     def dropAttachments(self):
         if config['training']['data']['removeRowIfAttachment']:
             self.dataframe = self.dataframe[self.dataframe['Attachments'].isnull()]
-        self.dataframe.drop('Attachments', axis=1, inplace=True)
+        if 'Attachments' in self.dataframe.columns:
+            self.dataframe.drop('Attachments', axis=1, inplace=True)
         logger.debug('Attachments dropped.')
 
     @staticmethod

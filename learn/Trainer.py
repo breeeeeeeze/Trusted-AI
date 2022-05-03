@@ -33,6 +33,11 @@ class Trainer:
             self.rnn.saveModelWeights(f'final_weights_{config["runName"]}')
             if config['pickleHistory']:
                 self.rnn.pickleHistory(f'history_{config["runName"]}')
+            self.rnn.makePredictor()
+            logger.info(colorize(
+                'Making some predictions to check', 'BLUE', 'BACKGROUND_WHITE'))
+            for _ in range(20):
+                self.rnn.predict('\n')
         except Exception as err:
             logger.error(colorize(f'{err}', 'FAIL'))
             raise

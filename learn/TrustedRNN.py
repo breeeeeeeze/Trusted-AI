@@ -17,9 +17,10 @@ logger = logging.getLogger('ai.learn.trustedrnn')
 class TrustedRNN:
     def __init__(self, vocab, text=None, runName='', modelType=None, loadFromWeights=False):
         # janky way to dynamically import the RNN model
+        self.modelType = modelType
         if not modelType:
-            modelType = config['model']
-        self.RNNModel = import_module(f'learn.models.{modelType}')
+            self.modelType = config['model']
+        self.RNNModel = import_module(f'learn.models.{self.modelType}')
         self.RNNModel = self.RNNModel.RNNModel
 
         self.runName = runName
@@ -34,6 +35,7 @@ class TrustedRNN:
         self.checkpointPath = config['checkpointPath']
         self.checkpointPrefix = config['checkpointPrefix'] + '_' + self.runName
         self.checkpointFreq = config['checkpointFreq']
+        self.layers = config['layers']
         self.text = text
         self.vocab = vocab
         self.dataset = None
@@ -77,10 +79,15 @@ class TrustedRNN:
         logger.info(f'{colorize("Dataset created", "OKGREEN")}')
 
     def makeModel(self):
+        layers = None
+        if self.modelType == 'LSTM_dynamiclayer':
+            layers = self.layers
+            logger.debug(f'Calling dynamic models with {layers} layers')
         self.model = self.RNNModel(
             len(self.charToID.get_vocabulary()),
             self.embeddingSize,
-            self.nUnits)
+            self.nUnits,
+            layers=layers)
         self.model.build(input_shape=(self.batchSize, self.seqLength))
         self.model.summary()
         self.model.compile(optimizer=self.optimizer, loss=self.loss(), metrics=['accuracy'])
@@ -108,11 +115,21 @@ class TrustedRNN:
             restore_best_weights=config['earlyStopping']['restoreBestWeights']
         )
 
+    def tensorboardCallback(self):
+        return tf.keras.callbacks.TensorBoard(
+            log_dir=f'tb_logs/{self.runName}',
+            histogram_freq=1,
+            write_graph=True,
+            write_images=False,
+            update_freq='epoch'
+        )
+
     def getCallbacks(self):
         callbacks = []
         callbacks.append(self.checkpointCallback())
         if config['earlyStopping']['useEarlyStopping']:
             callbacks.append(self.earlyStoppingCallback())
+        callbacks.append(self.tensorboardCallback())
         return callbacks
 
     def trainModel(self):
@@ -158,9 +175,14 @@ class TrustedRNN:
             string = 'History doesn\'t exist, train the model first'
             logger.error(f'{colorize(string, "FAIL")}')
             return
-        dump(self.history, filename)
+        with open(filename, 'wb') as f:
+            dump(self.history, f)
 
-    async def predict(self, seed, temperature=None):
+    def predict(self, seed, temperature=None):
+        if not self.predictor:
+            logger.error(f'{colorize("No predictor found, make predictor first", "FAIL")}')
+            return
+        seed = seed.lower()
         states = None
         nextChar = tf.constant([seed])
         result = []
@@ -170,7 +192,7 @@ class TrustedRNN:
                                                               states,
                                                               temperature=temperature)
             result.append(nextChar)
-            if len(result) > 2 and nextChar == '\n':
+            if len(result) > 0 and nextChar == '\n':
                 break
 
         result = (seed + tf.strings.join(result))[0].numpy().decode('utf-8').strip()

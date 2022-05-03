@@ -3,7 +3,7 @@ from tensorflow.keras import Model  # pyright: ignore[reportMissingImports]
 
 
 class RNNModel(Model):
-    def __init__(self, vocabSize, embeddingSize, nUnits):
+    def __init__(self, vocabSize, embeddingSize, nUnits, **kwargs):
         super().__init__(self)
         self.embedding = Embedding(vocabSize, embeddingSize)
         self.lstm = LSTM(nUnits, return_sequences=True, return_state=True)
