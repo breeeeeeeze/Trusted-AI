@@ -11,9 +11,9 @@ class Predictor(tf.keras.Model):
 
         skipIDs = self.charToID(['[UNK]'])[:, None]
         sparseMask = tf.SparseTensor(
-            values=[-float('inf')]*len(skipIDs),
+            values=[-float('inf')] * len(skipIDs),
             indices=skipIDs,
-            dense_shape=[len(self.charToID.get_vocabulary())]
+            dense_shape=[len(self.charToID.get_vocabulary())],
         )
         self.skipMask = tf.sparse.to_dense(sparseMask)
 

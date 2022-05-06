@@ -13,7 +13,7 @@ load_dotenv()
 
 config = readConfig()
 
-logger = setupLogger('ai', level='DEBUG')
+logger = setupLogger('ai', level=config['bot']['logLevel'])
 setupLogger('discord')
 
 client = discord.Client()
@@ -28,5 +28,6 @@ async def on_ready():
 @client.event
 async def on_message(message):
     await events.on_message(client, message)
+
 
 client.run(os.environ['BOT_TOKEN'])

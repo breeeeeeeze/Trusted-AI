@@ -11,7 +11,6 @@ Trusted-AI is discord bot that will imitate any chat it has been trained on. It 
 - regex
 - python_dotenv
 - pandas
-- tqdm
 
 ### How to run
 
@@ -50,7 +49,6 @@ Add any trained models in the prediction section of the config file. If all sett
 - There may be bugs hidden everywhere
 - There is currently no way to disable the logger or predictor bot parts separately
 - The input data has to be located in a folder called `data`
-- There is no way to specify any settings other than model type for the prediction, so everything in the learn section of the config has to stay the same between training and prediction for all models. If not, model building will fail.
 - Vanilla emoji filtering is broken
 - Depending on the seed it can start predicting in the middle of words
 

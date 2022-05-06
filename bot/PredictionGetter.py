@@ -12,7 +12,7 @@ class PredictionGetter:
     models = None
 
     @staticmethod
-    def makeModels():
+    async def makeModels():
         models = {}
         for model in config['prediction']['models']:
             models[model['name']] = PredictionGetter.makeModel(model)
@@ -23,13 +23,17 @@ class PredictionGetter:
     def makeModel(modelDict):
         modelName = modelDict['name']
         modelType = modelDict['model']
+        options = modelDict['options']
         logger.info(f'{colorize("Making model", "OKGREEN")} {modelName}')
         vocabPath = config['prediction']['vocabPath'].replace('{runName}', modelName)
         vocab = PredictionGetter.loadVocab(vocabPath)
-        return TrustedRNN(vocab,
-                          runName=modelName,
-                          modelType=modelType,
-                          loadFromWeights=True)
+        return TrustedRNN(
+            vocab,
+            runName=modelName,
+            modelType=modelType,
+            loadFromWeights=True,
+            **options,
+        )
 
     @staticmethod
     def loadVocab(fileName):
@@ -44,8 +48,10 @@ class PredictionGetter:
 
     @staticmethod
     async def predict(modelName, seed, temperature):
-        logger.debug(f'Predicting {modelName} with seed {seed} and temperature {temperature}')
-        prediction = await PredictionGetter.models[modelName].predict(seed, temperature)
+        logger.debug(
+            f'Predicting {modelName} with seed {seed} and temperature {temperature}'
+        )
+        prediction = PredictionGetter.models[modelName].predict(seed, temperature)
         if prediction.startswith('\n'):
             prediction = prediction[1:]
         return prediction

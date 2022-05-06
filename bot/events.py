@@ -17,8 +17,9 @@ lastCommand = datetime.datetime.now()
 
 def cooldown():
     global lastCommand  # TODO: make this non-stupid
-    if (datetime.datetime.now() - lastCommand
-            < datetime.timedelta(seconds=config['bot']['commandCooldown'])):
+    if datetime.datetime.now() - lastCommand < datetime.timedelta(
+        seconds=config['bot']['commandCooldown']
+    ):
         return True
     lastCommand = datetime.datetime.now()
     return False
@@ -26,16 +27,22 @@ def cooldown():
 
 async def on_ready(client):
     await client.change_presence(
-        activity=discord.Activity(type=discord.ActivityType.watching, name='you'))
-    PredictionGetter.makeModels()
+        activity=discord.Activity(type=discord.ActivityType.watching, name='you')
+    )
+    await PredictionGetter.makeModels()
+    logger.info(colorize('AI READY', 'OKGREEN'))
 
 
 async def on_message(client, message):
-    if not str(message.guild.id) == config['serverID'] \
-            or not str(message.channel.id) in config['channelIDs'] \
-            or message.author.bot:
+    channelID = str(message.channel.id)
+    if not str(message.guild.id) == config['serverID'] or message.author.bot:
         return
-    Scraper.exportMessage(message)
+
+    if channelID in config['scraperChannelIDs']:
+        Scraper.exportMessage(message)
+
+    if channelID not in config['predictChannelIDs']:
+        return
 
     if message.content == 'ai.shutdown' and str(message.author.id) == config['ownerID']:
         await message.channel.send('Shutting down...')
@@ -55,6 +62,9 @@ async def on_message(client, message):
             pass
         # then try to predict with command as model name
         try:
+            assert command in [
+                model['name'] for model in config['prediction']['models']
+            ]
             func = getattr(Commands, 'predict')
             if cooldown():
                 return

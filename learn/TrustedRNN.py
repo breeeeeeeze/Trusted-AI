@@ -15,7 +15,15 @@ logger = logging.getLogger('ai.learn.trustedrnn')
 
 
 class TrustedRNN:
-    def __init__(self, vocab, text=None, runName='', modelType=None, loadFromWeights=False):
+    def __init__(
+        self,
+        vocab,
+        text=None,
+        runName='',
+        modelType=None,
+        loadFromWeights=False,
+        **kwargs,
+    ):
         # janky way to dynamically import the RNN model
         self.modelType = modelType
         if not modelType:
@@ -23,6 +31,10 @@ class TrustedRNN:
         self.RNNModel = import_module(f'learn.models.{self.modelType}')
         self.RNNModel = self.RNNModel.RNNModel
 
+        # TODO improve getting model options
+        # TODO refactor config
+        for option in set(config.keys()).intersection(set(kwargs.keys())):
+            config[option] = kwargs[option]
         self.runName = runName
         self.batchSize = config['batchSize']
         self.nUnits = config['nUnits']
@@ -44,11 +56,12 @@ class TrustedRNN:
         self.predictor = None
         logger.info(f'{colorize("TrustedRNN initialized", "OKGREEN")}')
 
-        self.charToID = tf.keras.layers.StringLookup(vocabulary=self.vocab, mask_token=None)
+        self.charToID = tf.keras.layers.StringLookup(
+            vocabulary=self.vocab, mask_token=None
+        )
         self.IDToChar = tf.keras.layers.StringLookup(
-            vocabulary=self.charToID.get_vocabulary(),
-            invert=True,
-            mask_token=None)
+            vocabulary=self.charToID.get_vocabulary(), invert=True, mask_token=None
+        )
 
         if loadFromWeights and self.runName:
             self.loadWithWeights()
@@ -68,29 +81,34 @@ class TrustedRNN:
             input = sequence[:-1]
             target = sequence[1:]
             return input, target
+
         allIDs = self.charToID(tf.strings.unicode_split(self.text, 'UTF-8'))
         sequences = tf.data.Dataset.from_tensor_slices(allIDs)
         sequences = sequences.batch(self.seqLength + 1, drop_remainder=True)
         self.dataset = sequences.map(splitInputTarget)
-        self.dataset = self.dataset \
-            .shuffle(self.bufferSize) \
-            .batch(self.batchSize, drop_remainder=True) \
+        self.dataset = (
+            self.dataset.shuffle(self.bufferSize)
+            .batch(self.batchSize, drop_remainder=True)
             .prefetch(tf.data.experimental.AUTOTUNE)
+        )
         logger.info(f'{colorize("Dataset created", "OKGREEN")}')
 
     def makeModel(self):
         layers = None
-        if self.modelType == 'LSTM_dynamiclayer':
+        if self.modelType == 'LSTM_multilayer' or self.modelType == 'BiLSTM_multilayer':
             layers = self.layers
             logger.debug(f'Calling dynamic models with {layers} layers')
         self.model = self.RNNModel(
             len(self.charToID.get_vocabulary()),
             self.embeddingSize,
             self.nUnits,
-            layers=layers)
+            layers=layers,
+        )
         self.model.build(input_shape=(self.batchSize, self.seqLength))
         self.model.summary()
-        self.model.compile(optimizer=self.optimizer, loss=self.loss(), metrics=['accuracy'])
+        self.model.compile(
+            optimizer=self.optimizer, loss=self.loss(), metrics=['accuracy']
+        )
         logger.info(f'{colorize("Model created", "OKGREEN")}')
 
     def loss(self):
@@ -98,9 +116,7 @@ class TrustedRNN:
         return tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
     def checkpointCallback(self):
-        filepath = path.join(
-            self.checkpointPath,
-            self.checkpointPrefix)
+        filepath = path.join(self.checkpointPath, self.checkpointPrefix)
         return tf.keras.callbacks.ModelCheckpoint(
             filepath=filepath,
             monitor='accuracy',
@@ -112,7 +128,7 @@ class TrustedRNN:
         return tf.keras.callbacks.EarlyStopping(
             monitor=config['earlyStopping']['monitor'],
             patience=config['earlyStopping']['patience'],
-            restore_best_weights=config['earlyStopping']['restoreBestWeights']
+            restore_best_weights=config['earlyStopping']['restoreBestWeights'],
         )
 
     def tensorboardCallback(self):
@@ -121,7 +137,7 @@ class TrustedRNN:
             histogram_freq=1,
             write_graph=True,
             write_images=False,
-            update_freq='epoch'
+            update_freq='epoch',
         )
 
     def getCallbacks(self):
@@ -141,15 +157,14 @@ class TrustedRNN:
             self.dataset,
             epochs=self.nEpochs,
             callbacks=[self.getCallbacks()],
-            verbose=self.verbose)
+            verbose=self.verbose,
+        )
 
     def saveModelWeights(self, filename):
         if not self.model:
             logger.error(f'{colorize("Model not created", "FAIL")}')
             return
-        filepath = path.join(
-            self.checkpointPath,
-            filename)
+        filepath = path.join(self.checkpointPath, filename)
         self.model.save_weights(filepath)
         logger.info(f'{colorize("Model weights saved", "OKBLUE")}')
 
@@ -157,9 +172,7 @@ class TrustedRNN:
         if not self.model:
             logger.error(f'{colorize("Model not created", "FAIL")}')
             return
-        filepath = path.join(
-            self.checkpointPath,
-            filename)
+        filepath = path.join(self.checkpointPath, filename)
         self.model.load_weights(filepath).expect_partial()
         logger.info(f'{colorize("Model weights loaded", "OKBLUE")}')
 
@@ -180,7 +193,9 @@ class TrustedRNN:
 
     def predict(self, seed, temperature=None):
         if not self.predictor:
-            logger.error(f'{colorize("No predictor found, make predictor first", "FAIL")}')
+            logger.error(
+                f'{colorize("No predictor found, make predictor first", "FAIL")}'
+            )
             return
         seed = seed.lower()
         states = None
@@ -188,13 +203,19 @@ class TrustedRNN:
         result = []
 
         for _ in range(1000):
-            nextChar, states = self.predictor.predictNextChar(nextChar,
-                                                              states,
-                                                              temperature=temperature)
+            nextChar, states = self.predictor.predictNextChar(
+                nextChar, states, temperature=temperature
+            )
             result.append(nextChar)
-            if len(result) > 0 and nextChar == '\n':
-                break
+            if nextChar == '\n':
+                if len(result) > 3:
+                    break
+                else:
+                    seed = ''
+                    result = []
 
         result = (seed + tf.strings.join(result))[0].numpy().decode('utf-8').strip()
-        logger.debug(f'{colorize("Prediction:", "OKGREEN")} {colorize(result, "OKCYAN")}')
+        logger.debug(
+            f'{colorize("Prediction:", "OKGREEN")} {colorize(result, "OKCYAN")}'
+        )
         return result
