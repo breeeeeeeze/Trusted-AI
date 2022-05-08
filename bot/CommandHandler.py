@@ -64,8 +64,6 @@ class CommandHandler:
 
     @Decorators.cooldown
     async def predict(self, message, _, modelName=None):
-        if not self.activatePrediction:
-            return
         if str(message.channel.id) not in config['bot']['predictor']['predictChannelIDs']:
             return
         splitMessage = message.content.split(' ')[1:]
