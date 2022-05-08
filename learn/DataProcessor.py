@@ -71,7 +71,7 @@ class DataProcessor:
 
     def importData(self):
         listOfDFs = []
-        for fileGlob in config['training']['data']['inputFiles']:
+        for fileGlob in config['learn']['data']['inputFiles']:
             for fileName in glob.glob(f'data\\{fileGlob}'):
                 logger.debug(f'Importing {fileName}')
                 listOfDFs.append(pd.read_csv(fileName))
@@ -92,7 +92,7 @@ class DataProcessor:
         logger.debug('Columns dropped.')
 
     def dropAttachments(self):
-        if config['training']['data']['removeRowIfAttachment']:
+        if config['learn']['data']['removeRowIfAttachment']:
             self.dataframe = self.dataframe[self.dataframe['Attachments'].isnull()]
         if 'Attachments' in self.dataframe.columns:
             self.dataframe.drop('Attachments', axis=1, inplace=True)
@@ -102,66 +102,46 @@ class DataProcessor:
     def filterString(string):
         if not isinstance(string, str):
             return string
-        if config['training']['data']['onlyLowercase']:
+        if config['learn']['data']['onlyLowercase']:
             string = string.lower()
         # filter discord emotes
-        if config['training']['data']['filterDiscordEmotes']:
+        if config['learn']['data']['filterDiscordEmotes']:
             string = re.sub(r'<a?:[a-zA-Z0-9_]+?:\d{18}>', '', string)
         # filter emoji
         # FIXME check why this isnt working
-        if config['training']['data']['filterVanillaEmoji']:
+        if config['learn']['data']['filterVanillaEmoji']:
             string = re.sub(
                 r'(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])',  # noqa: E501
                 '',
                 string,
             )
         # filter pings
-        if config['training']['data']['filterPings']:
+        if config['learn']['data']['filterMentions']:
             string = re.sub(r'<@!?\d{18}>', '', string)
         # filter channels
-        if config['training']['data']['filterChannels']:
+        if config['learn']['data']['filterChannels']:
             string = re.sub(r'<#\d{18}>', '', string)
         # filter links
-        if config['training']['data']['filterLinks']:
+        if config['learn']['data']['filterLinks']:
             string = re.sub(
                 r'<?https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)>?',  # noqa: E501
                 '',
                 string,
             )
         # filter markdown
-        if config['training']['data']['filterMarkdown']:
-            string = re.sub(
-                r'(\*\*\*(?=[^\n]*\*\*\*))|((?<=\*\*\*[^\n]*)\*\*\*)', '', string
-            )  # bold italic # noqa: E501
-            string = re.sub(
-                r'(\*\*(?=[^\n]*\*\*))|((?<=\*\*[^\n]*)\*\*)', '', string
-            )  # bold
-            string = re.sub(
-                r'(\*(?![ \n])(?=[^\n]*\*))|((?<=\*[^ ][^\n]*)\*)', '', string
-            )  # italic # noqa: E501
-            string = re.sub(
-                r'(~~(?=[^\n]*~~))|((?<=~~[^\n]*)~~)', '', string
-            )  # strikethrough
-            string = re.sub(
-                r'(\_\_(?=[^\n]*\_\_))|((?<=\_\_[^\n]*)\_\_)', '', string
-            )  # underline
-            string = re.sub(
-                r'(\|\|(?=[^\n]*\|\|))|((?<=\|\|[^\n]*)\|\|)', '', string
-            )  # spoiler
-            string = re.sub(
-                r'(```(?=[^\n]*```))|((?<=```[^\n]*)```)', '', string
-            )  # code block
-            string = re.sub(
-                r'(`(?=[^\n]*`))|((?<=`[^\n]*)`)', '', string
-            )  # inline code
-        if config['training']['data']['onlyKeepAllowedChars']:
-            string = re.sub(
-                rf'[^{config["training"]["data"]["allowedChars"]}]', '', string
-            )
-        elif config['training']['data']['filterCustomChars']:
-            string = re.sub(
-                rf'[{config["training"]["data"]["customChars"]}]', '', string
-            )
+        if config['learn']['data']['filterMarkdown']:
+            string = re.sub(r'(\*\*\*(?=[^\n]*\*\*\*))|((?<=\*\*\*[^\n]*)\*\*\*)', '', string)  # bold italic
+            string = re.sub(r'(\*\*(?=[^\n]*\*\*))|((?<=\*\*[^\n]*)\*\*)', '', string)  # bold
+            string = re.sub(r'(\*(?![ \n])(?=[^\n]*\*))|((?<=\*[^ ][^\n]*)\*)', '', string)  # italic
+            string = re.sub(r'(~~(?=[^\n]*~~))|((?<=~~[^\n]*)~~)', '', string)  # strikethrough
+            string = re.sub(r'(\_\_(?=[^\n]*\_\_))|((?<=\_\_[^\n]*)\_\_)', '', string)  # underline
+            string = re.sub(r'(\|\|(?=[^\n]*\|\|))|((?<=\|\|[^\n]*)\|\|)', '', string)  # spoiler
+            string = re.sub(r'(```(?=[^\n]*```))|((?<=```[^\n]*)```)', '', string)  # code block
+            string = re.sub(r'(`(?=[^\n]*`))|((?<=`[^\n]*)`)', '', string)  # inline code
+        if config['learn']['data']['onlyKeepAllowedChars']:
+            string = re.sub(rf'[^{config["learn"]["data"]["allowedChars"]}]', '', string)
+        elif config['learn']['data']['filterCustomChars']:
+            string = re.sub(rf'[{config["learn"]["data"]["bannedChars"]}]', '', string)
         return string
 
     def filterContent(self):
@@ -170,9 +150,7 @@ class DataProcessor:
 
     def dropEmptyContent(self):
         self.dataframe.dropna(subset=['Contents'], inplace=True)
-        self.dataframe.drop(
-            self.dataframe[self.dataframe['Contents'] == ''].index, inplace=True
-        )
+        self.dataframe.drop(self.dataframe[self.dataframe['Contents'] == ''].index, inplace=True)
         logger.debug('Empty content dropped.')
 
     def dfToText(self):

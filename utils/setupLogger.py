@@ -1,5 +1,9 @@
 import logging
 
+from utils.configReader import readConfig
+
+config = readConfig()
+
 
 def setupLogger(name, level='INFO'):
     level = getattr(logging, level.upper())
@@ -10,11 +14,14 @@ def setupLogger(name, level='INFO'):
     else:
         logger = logging.getLogger(name)
     logger.setLevel(level)
-    handler = logging.StreamHandler()
-    handler.setFormatter(
-        logging.Formatter(
-            '\u001b[35;1m[%(asctime)s]\u001b[0m[%(name)s][%(levelname)s] %(message)s'
-        )
-    )
-    logger.addHandler(handler)
+    if not config['log']['logToConsole'] and not config['log']['logToFile']:
+        raise Exception('No log destination specified')
+    if config['log']['logToFile']:
+        handler = logging.FileHandler(config['log']['logFile'])
+        handler.setFormatter(logging.Formatter(config['log']['logFormat']))
+        logger.addHandler(handler)
+    if config['log']['logToConsole']:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(config['log']['logFormat']))
+        logger.addHandler(handler)
     return logger

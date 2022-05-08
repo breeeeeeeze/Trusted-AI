@@ -3,7 +3,7 @@ from utils.setupLogger import setupLogger
 from utils.configReader import readConfig
 
 config = readConfig()
-setupLogger('ai', config['training']['run']['logLevel'])
+setupLogger('ai', config['learn']['run']['logLevel'])
 
 trainer = Trainer()
 trainer.run()

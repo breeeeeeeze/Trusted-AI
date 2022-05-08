@@ -6,7 +6,7 @@ from utils.configReader import readConfig
 from utils.colorizer import colorize
 
 config = readConfig()
-config = config['training']['run']
+config = config['learn']['run']
 
 logger = logging.getLogger('ai.learn.trainer')
 
@@ -18,9 +18,7 @@ class Trainer:
 
     def run(self):
         try:
-            logger.info(
-                colorize('Starting full training sequence', 'BLUE', 'BACKGROUND_WHITE')
-            )
+            logger.info(colorize('Starting full training sequence', 'BLUE', 'BACKGROUND_WHITE'))
             text, vocab = self.dp.processInputData()
             self.dp.exportVocab(f'{config["vocabPath"]}vocab_{config["runName"]}.txt')
             logger.info(
@@ -34,18 +32,12 @@ class Trainer:
             self.rnn.makeDataset()
             self.rnn.makeModel()
             self.rnn.trainModel()
-            logger.info(
-                colorize(
-                    'Finished training, saving results...', 'BLUE', 'BACKGROUND_WHITE'
-                )
-            )
+            logger.info(colorize('Finished training, saving results...', 'BLUE', 'BACKGROUND_WHITE'))
             self.rnn.saveModelWeights(f'final_weights_{config["runName"]}')
             if config['pickleHistory']:
                 self.rnn.pickleHistory(f'history_{config["runName"]}')
             self.rnn.makePredictor()
-            logger.info(
-                colorize('Making some predictions to check', 'BLUE', 'BACKGROUND_WHITE')
-            )
+            logger.info(colorize('Making some predictions to check', 'BLUE', 'BACKGROUND_WHITE'))
             for _ in range(20):
                 self.rnn.predict('\n')
         except Exception as err:

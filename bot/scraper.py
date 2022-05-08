@@ -11,12 +11,10 @@ logger = logging.getLogger('ai.bot.scraper')
 
 
 class Scraper:
-
     @staticmethod
     def exportMessage(message):
         try:
-            if not message.content \
-                    or message.content.startswith('ai.'):
+            if not message.content or message.content.startswith('ai.'):
                 return
             fileName = Scraper.getFileName()
             if not os.path.exists(fileName):
@@ -31,14 +29,20 @@ class Scraper:
                 f.write(f'{messageID},"{content}",{channelID},{authorID},{attachment}\n')
             return logger.log(
                 logging.INFO,
-                (f'Message logged by '
+                (
+                    f'Message logged by '
                     f'{colorize(f"{message.author.name}#{message.author.discriminator}", "OKBLUE")}'  # noqa: E501
-                    f' in {colorize(f"#{message.channel.name}", "OKCYAN")}'))
+                    f' in {colorize(f"#{message.channel.name}", "OKCYAN")}'
+                ),
+            )
         except Exception:
             return logger.log(
                 logging.WARNING,
-                colorize(f'Failed to export message: {message.id}', 'WARNING'))
+                colorize(f'Failed to export message: {message.id}', 'WARNING'),
+            )
 
     @staticmethod
     def getFileName():
-        return config['exportFile'].replace('{date}', datetime.datetime.now().strftime('%Y-%m-%d'))
+        return config['bot']['messageLogger']['exportFile'].replace(
+            '{date}', datetime.datetime.now().strftime('%Y-%m-%d')
+        )

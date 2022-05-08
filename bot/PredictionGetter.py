@@ -10,6 +10,15 @@ config = readConfig()
 
 class PredictionGetter:
     models = None
+    active = config['bot']['predictor']['activatePredictor']
+
+    @staticmethod
+    def activate():
+        PredictionGetter.active = True
+
+    @staticmethod
+    def deactivate():
+        PredictionGetter.active = False
 
     @staticmethod
     async def makeModels():
@@ -48,9 +57,7 @@ class PredictionGetter:
 
     @staticmethod
     async def predict(modelName, seed, temperature):
-        logger.debug(
-            f'Predicting {modelName} with seed {seed} and temperature {temperature}'
-        )
+        logger.debug(f'Predicting {modelName} with seed {seed} and temperature {temperature}')
         prediction = PredictionGetter.models[modelName].predict(seed, temperature)
         if prediction.startswith('\n'):
             prediction = prediction[1:]

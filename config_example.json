@@ -1,67 +1,90 @@
 {
-	"serverID": "",
-	"channelIDs": [""],
-	"exportFile": "export-{date}.csv",
-	"logFile": "log.txt",
-	"ownerID": "",
-	"training": {
+	"log": {
+		"logToFile": false,
+		"logFile": "log.txt",
+		"logToConsole": true,
+		"logFormat": "\u001b[35;1m[%(asctime)s]\u001b[0m[%(name)s][%(levelname)s] %(message)s"
+	},
+	"learn": {
 		"data": {
-			"inputFiles": ["messages.csv"],
+			"inputFiles": ["message.csv"],
 			"removeRowIfAttachment": false,
 			"onlyLowercase": true,
 			"filterDiscordEmotes": false,
 			"filterVanillaEmoji": true,
-			"filterPings": false,
+			"filterMentions": false,
 			"filterChannels": false,
 			"filterLinks": true,
 			"filterMarkdown": true,
-			"filterCustomChars": false,
+			"filterBannedChars": false,
 			"onlyKeepAllowedChars": true,
-			"allowedChars": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.:;,!?'()[]{}<>@#$%^&*+|\\/~`ćčžđšäöüß€",
-			"customChars": "ћ"
+			"allowedChars": "\\n abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.:+,!?'+<>@#$*\\\\/",
+			"bannedChars": ""
 		},
-		"learn": {
-			"model": "LSTM_1layer",
-			"layers": 2,
-			"batchSize": 256,
-			"seqLength": 50,
+		"model": {
+			"modelType": "LSTM_1layer",
+			"layers": 1,
+			"nUnits": 2000,
+			"seqLength": 100,
 			"bufferSize": 10000,
-			"nUnits": 1024,
-			"nEpochs": 200,
-			"verbose": 2,
-			"embeddingSize": 256,
+			"embeddingSize": 64
+		},
+		"training": {
+			"batchSize": 256,
+			"nEpochs": 300,
+			"verbose": 1,
 			"optimizer": "adam",
-			"checkpointPath": "checkpoints/",
-			"checkpointPrefix": "checkpoint",
-			"checkpointFreq": 50,
 			"earlyStopping": {
 				"useEarlyStopping": true,
 				"patience": 5,
-				"monitor": "accuracy",
+				"monitor": "loss",
 				"restoreBestWeights": true
 			}
 		},
 		"run": {
+			"checkpoints": {
+				"path": "checkpoints/",
+				"prefix": "checkpoint",
+				"saveBestOnly": true,
+				"monitor": "loss"
+			},
 			"pickleHistory": true,
 			"vocabPath": "vocab/",
-			"runName": "testrun"
+			"runName": "testrun",
+			"logLevel": "DEBUG"
 		}
 	},
 	"prediction": {
 		"models": [{
 			"name": "testrun",
-			"model": "LSTM_1layer"
-		}],
+			"model": "LSTM_1layer",
+			"options": {
+				"nUnits": 2000
+			}
+		 }],
 		"vocabPath": "vocab/vocab_{runName}",
 		"weightsPath": "checkpoints/checkpoint_{runName}",
-		"bannedWords": [""]
+		"bannedWords": []
 	},
 	"bot": {
+		"serverID": "123456789",
+		"ownerID": "987654321",
+		"ownerChannelID": "123456789", 
+		"messageLogger": {
+			"exportFile": "export-{date}.csv",
+			"activateMessageLogger": true,
+			"messageLoggerChannelIDs": ["123456789", "234567891"]
+		},
+		"predictor": {
+			"activatePredictor": true,
+			"predictChannelIDs": ["123456789"]
+		},
 		"strings": {
 			"commandHandler.predictionError": "Prediction error",
-			"commandHandler.invalidTemperature": "Temperature needs to be a float",
-			"commandHandler.bannedWord": "Prediction generated a banned word"
+			"commandHandler.invalidTemperature": "Invalid temperature",
+			"commandHandler.bannedWord": "Banned word generated"
 		},
-		"commandCooldown": 5
+		"commandCooldown": 1,
+		"logLevel": "INFO"
 	}
 }

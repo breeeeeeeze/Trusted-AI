@@ -10,7 +10,7 @@ from utils.configReader import readConfig
 from utils.colorizer import colorize
 
 config = readConfig()
-config = config['training']['learn']
+config = config['learn']
 logger = logging.getLogger('ai.learn.trustedrnn')
 
 
@@ -19,46 +19,49 @@ class TrustedRNN:
         self,
         vocab,
         text=None,
-        runName='',
-        modelType=None,
         loadFromWeights=False,
         **kwargs,
     ):
-        # janky way to dynamically import the RNN model
-        self.modelType = modelType
-        if not modelType:
-            self.modelType = config['model']
-        self.RNNModel = import_module(f'learn.models.{self.modelType}')
-        self.RNNModel = self.RNNModel.RNNModel
 
-        # TODO improve getting model options
-        # TODO refactor config
-        for option in set(config.keys()).intersection(set(kwargs.keys())):
-            config[option] = kwargs[option]
-        self.runName = runName
-        self.batchSize = config['batchSize']
-        self.nUnits = config['nUnits']
-        self.seqLength = config['seqLength']
-        self.bufferSize = config['bufferSize']
-        self.nEpochs = config['nEpochs']
-        self.verbose = config['verbose']
-        self.embeddingSize = config['embeddingSize']
-        self.optimizer = config['optimizer']
-        self.checkpointPath = config['checkpointPath']
-        self.checkpointPrefix = config['checkpointPrefix'] + '_' + self.runName
-        self.checkpointFreq = config['checkpointFreq']
-        self.layers = config['layers']
+        self.runName = config['run']['runName']
+        self.modelType = config['model']['modelType']
+        self.batchSize = config['training']['batchSize']
+        self.nUnits = config['model']['nUnits']
+        self.seqLength = config['model']['seqLength']
+        self.bufferSize = config['model']['bufferSize']
+        self.nEpochs = config['training']['nEpochs']
+        self.verbose = config['training']['verbose']
+        self.embeddingSize = config['model']['embeddingSize']
+        self.optimizer = config['training']['optimizer']
+        self.checkpointPath = config['training']['checkpoints']['path']
+        self.checkpointPrefix = config['training']['checkpoints']['prefix']
+        self.checkpointSaveBestOnly = config['training']['checkpoints']['saveBestOnly']
+        self.checkpointMonitor = config['training']['checkpoints']['monitor']
+        self.layers = config['model']['layers']
         self.text = text
         self.vocab = vocab
         self.dataset = None
         self.model = None
         self.history = None
         self.predictor = None
+        self.useEarlyStopping = config['training']['earlyStopping']['useEarlyStopping']
+        self.earlyStoppingPatience = config['training']['earlyStopping']['patience']
+        self.earlyStoppingRestoreBestWeights = config['training']['earlyStopping']['restoreBestWeights']
+        self.earlyStoppingMonitor = config['training']['earlyStopping']['monitor']
+        for option in kwargs.keys():
+            if hasattr(self, option) and isinstance(getattr(self, option), type(kwargs[option])):
+                setattr(self, option, kwargs[option])
+            else:
+                logger.warning(colorize(f'{option} is not a valid option, using default.', 'WARNING'))
+        self.checkpointPrefix += f'_{self.runName}'
+
+        # dynamically import the RNN model
+        self.RNNModel = import_module(f'learn.models.{self.modelType}')
+        self.RNNModel = self.RNNModel.RNNModel
+
         logger.info(f'{colorize("TrustedRNN initialized", "OKGREEN")}')
 
-        self.charToID = tf.keras.layers.StringLookup(
-            vocabulary=self.vocab, mask_token=None
-        )
+        self.charToID = tf.keras.layers.StringLookup(vocabulary=self.vocab, mask_token=None)
         self.IDToChar = tf.keras.layers.StringLookup(
             vocabulary=self.charToID.get_vocabulary(), invert=True, mask_token=None
         )
@@ -106,9 +109,7 @@ class TrustedRNN:
         )
         self.model.build(input_shape=(self.batchSize, self.seqLength))
         self.model.summary()
-        self.model.compile(
-            optimizer=self.optimizer, loss=self.loss(), metrics=['accuracy']
-        )
+        self.model.compile(optimizer=self.optimizer, loss=self.loss(), metrics=['accuracy'])
         logger.info(f'{colorize("Model created", "OKGREEN")}')
 
     def loss(self):
@@ -119,16 +120,16 @@ class TrustedRNN:
         filepath = path.join(self.checkpointPath, self.checkpointPrefix)
         return tf.keras.callbacks.ModelCheckpoint(
             filepath=filepath,
-            monitor='accuracy',
-            save_best_only=True,
+            monitor=self.checkpointMonitor,
+            save_best_only=self.checkpointSaveBestOnly,
             save_weights_only=True,
         )
 
     def earlyStoppingCallback(self):
         return tf.keras.callbacks.EarlyStopping(
-            monitor=config['earlyStopping']['monitor'],
-            patience=config['earlyStopping']['patience'],
-            restore_best_weights=config['earlyStopping']['restoreBestWeights'],
+            monitor=config['training']['earlyStopping']['monitor'],
+            patience=config['training']['earlyStopping']['patience'],
+            restore_best_weights=config['training']['earlyStopping']['restoreBestWeights'],
         )
 
     def tensorboardCallback(self):
@@ -143,7 +144,7 @@ class TrustedRNN:
     def getCallbacks(self):
         callbacks = []
         callbacks.append(self.checkpointCallback())
-        if config['earlyStopping']['useEarlyStopping']:
+        if config['training']['earlyStopping']['useEarlyStopping']:
             callbacks.append(self.earlyStoppingCallback())
         callbacks.append(self.tensorboardCallback())
         return callbacks
@@ -193,19 +194,15 @@ class TrustedRNN:
 
     def predict(self, seed, temperature=None):
         if not self.predictor:
-            logger.error(
-                f'{colorize("No predictor found, make predictor first", "FAIL")}'
-            )
+            logger.error(f'{colorize("No predictor found, make predictor first", "FAIL")}')
             return
         seed = seed.lower()
         states = None
         nextChar = tf.constant([seed])
         result = []
 
-        for _ in range(1000):
-            nextChar, states = self.predictor.predictNextChar(
-                nextChar, states, temperature=temperature
-            )
+        for _ in range(2000):
+            nextChar, states = self.predictor.predictNextChar(nextChar, states, temperature=temperature)
             result.append(nextChar)
             if nextChar == '\n':
                 if len(result) > 3:
@@ -213,9 +210,10 @@ class TrustedRNN:
                 else:
                     seed = ''
                     result = []
+            # maximum discord message length is 2000
+            if len(seed) + len(result) >= 1999:
+                break
 
         result = (seed + tf.strings.join(result))[0].numpy().decode('utf-8').strip()
-        logger.debug(
-            f'{colorize("Prediction:", "OKGREEN")} {colorize(result, "OKCYAN")}'
-        )
+        logger.debug(f'{colorize("Prediction:", "OKGREEN")} {colorize(result, "OKCYAN")}')
         return result

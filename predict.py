@@ -16,9 +16,7 @@ if len(sys.argv) < 3:
 name = str(sys.argv[1])
 if name not in [model['name'] for model in config['prediction']['models']]:
     print('Invalid model')
-    print(
-        f'Available models: {[model["name"] for model in config["prediction"]["models"]]}'
-    )
+    print(f'Available models: {[model["name"] for model in config["prediction"]["models"]]}')
     sys.exit(1)
 
 for model in config['prediction']['models']:
