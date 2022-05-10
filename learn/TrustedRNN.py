@@ -9,8 +9,8 @@ from learn.Predictor import Predictor
 from utils.configReader import readConfig
 from utils.colorizer import colorize
 
-config = readConfig()
-config = config['learn']
+config_ = readConfig()
+config = config_['learn']
 logger = logging.getLogger('ai.learn.trustedrnn')
 
 
@@ -19,7 +19,6 @@ class TrustedRNN:
         self,
         vocab,
         text=None,
-        loadFromWeights=False,
         **kwargs,
     ):
 
@@ -48,6 +47,8 @@ class TrustedRNN:
         self.earlyStoppingPatience = config['training']['earlyStopping']['patience']
         self.earlyStoppingRestoreBestWeights = config['training']['earlyStopping']['restoreBestWeights']
         self.earlyStoppingMonitor = config['training']['earlyStopping']['monitor']
+        self.maxPredictionLength = config_['prediction']['maxPredictionLength']
+        self.printSummary = False
         for option in kwargs.keys():
             if hasattr(self, option) and isinstance(getattr(self, option), type(kwargs[option])):
                 setattr(self, option, kwargs[option])
@@ -59,17 +60,14 @@ class TrustedRNN:
         self.RNNModel = import_module(f'learn.models.{self.modelType}')
         self.RNNModel = self.RNNModel.RNNModel
 
-        logger.info(f'{colorize("TrustedRNN initialized", "OKGREEN")}')
-
         self.charToID = tf.keras.layers.StringLookup(vocabulary=self.vocab, mask_token=None)
         self.IDToChar = tf.keras.layers.StringLookup(
             vocabulary=self.charToID.get_vocabulary(), invert=True, mask_token=None
         )
 
-        if loadFromWeights and self.runName:
-            self.loadWithWeights()
+        logger.debug(f'{colorize("TrustedRNN initialized", "OKGREEN")}')
 
-    def loadWithWeights(self):
+    def loadFromWeights(self):
         logger.debug('Loading model with weights')
         self.makeModel()
         self.loadModelWeights(self.checkpointPrefix)
@@ -94,7 +92,7 @@ class TrustedRNN:
             .batch(self.batchSize, drop_remainder=True)
             .prefetch(tf.data.experimental.AUTOTUNE)
         )
-        logger.info(f'{colorize("Dataset created", "OKGREEN")}')
+        logger.debug(f'{colorize("Dataset created", "OKGREEN")}')
 
     def makeModel(self):
         layers = None
@@ -108,9 +106,10 @@ class TrustedRNN:
             layers=layers,
         )
         self.model.build(input_shape=(self.batchSize, self.seqLength))
-        self.model.summary()
+        if self.printSummary:
+            self.model.summary()
         self.model.compile(optimizer=self.optimizer, loss=self.loss(), metrics=['accuracy'])
-        logger.info(f'{colorize("Model created", "OKGREEN")}')
+        logger.debug(f'{colorize("Model created", "OKGREEN")}')
 
     def loss(self):
         logger.debug('Using SparseCategoricalCrossentropy')
@@ -167,7 +166,7 @@ class TrustedRNN:
             return
         filepath = path.join(self.checkpointPath, filename)
         self.model.save_weights(filepath)
-        logger.info(f'{colorize("Model weights saved", "OKBLUE")}')
+        logger.debug(f'{colorize("Model weights saved", "OKBLUE")}')
 
     def loadModelWeights(self, filename):
         if not self.model:
@@ -175,14 +174,14 @@ class TrustedRNN:
             return
         filepath = path.join(self.checkpointPath, filename)
         self.model.load_weights(filepath).expect_partial()
-        logger.info(f'{colorize("Model weights loaded", "OKBLUE")}')
+        logger.debug(f'{colorize("Model weights loaded", "OKBLUE")}')
 
     def makePredictor(self):
         if not self.model:
             logger.error(f'{colorize("Model not created", "FAIL")}')
             return
         self.predictor = Predictor(self.model, self.IDToChar, self.charToID)
-        logger.info(f'{colorize("Predictor created", "OKGREEN")}')
+        logger.debug(f'{colorize("Predictor created", "OKGREEN")}')
 
     def pickleHistory(self, filename):
         if not self.history:
@@ -201,7 +200,7 @@ class TrustedRNN:
         nextChar = tf.constant([seed])
         result = []
 
-        for _ in range(2000):
+        for _ in range(self.maxPredictionLength):
             nextChar, states = self.predictor.predictNextChar(nextChar, states, temperature=temperature)
             result.append(nextChar)
             if nextChar == '\n':

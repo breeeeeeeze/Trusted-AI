@@ -9,56 +9,66 @@ config = readConfig()
 
 
 class PredictionGetter:
-    models = None
-    active = config['bot']['predictor']['activatePredictor']
+    def __init__(self, activate: bool = False):
+        self.builtModels = {}
+        self.active = activate
+        self.modelSettings = config['prediction']['models']
+        if self.active:
+            logger.info(f'{colorize("Predictor", "OKBLUE")} is {colorize("active", "GREEN")}')
+            logger.info(colorize('Initializing models...', 'OKBLUE'))
+            self.initializeModels()
+        else:
+            logger.info(f'{colorize("Predictor", "OKBLUE")} is {colorize("inactive", "RED")}')
 
-    @staticmethod
-    def activate():
-        PredictionGetter.active = True
+    def activate(self):
+        if not self.active:
+            self.active = True
+            self.initializeModels()
+            logger.info(f'{colorize("Predictor", "OKBLUE")} is {colorize("active", "GREEN")}')
 
-    @staticmethod
-    def deactivate():
-        PredictionGetter.active = False
+    def deactivate(self):
+        if self.active:
+            self.active = False
+            self.builtModels = {}
+            logger.info(f'{colorize("Predictor", "OKBLUE")} is {colorize("inactive", "RED")}')
 
-    @staticmethod
-    async def makeModels():
-        models = {}
-        for model in config['prediction']['models']:
-            models[model['name']] = PredictionGetter.makeModel(model)
-        PredictionGetter.models = models
-        logger.debug(PredictionGetter.models)
+    def initializeModels(self):
+        self.builtModels = {}
+        for model in self.modelSettings:
+            builtModel = self.buildModel(model)
+            if not builtModel:
+                logger.warning(colorize(f'{model["name"]} failed to build, skipping.', 'WARNING'))
+            self.builtModels[model['name']] = builtModel
+        logger.info(colorize('Models initialized', 'OKBLUE'))
 
-    @staticmethod
-    def makeModel(modelDict):
-        modelName = modelDict['name']
-        modelType = modelDict['model']
-        options = modelDict['options']
-        logger.info(f'{colorize("Making model", "OKGREEN")} {modelName}')
-        vocabPath = config['prediction']['vocabPath'].replace('{runName}', modelName)
-        vocab = PredictionGetter.loadVocab(vocabPath)
-        return TrustedRNN(
-            vocab,
-            runName=modelName,
-            modelType=modelType,
-            loadFromWeights=True,
-            **options,
-        )
+    def buildModel(self, model):
+        logger.info(f'{colorize("Building model", "OKGREEN")} {model["name"]}')
+        vocab = self.loadVocab(model)
+        if not vocab:
+            logger.warning(colorize(f'{model["name"]} has no vocab, skipping.', 'WARNING'))
+            return
+        rnn = TrustedRNN(vocab, runName=model['name'], **model['options'])
+        rnn.loadFromWeights()
+        return rnn
 
-    @staticmethod
-    def loadVocab(fileName):
+    def loadVocab(self, model):
+        filename = config['prediction']['vocabPath'].replace('{runName}', model['name'])
         try:
-            with open(f'{fileName}.txt', 'r', encoding='utf-8') as f:
+            with open(f'{filename}.txt', 'r', encoding='utf-8') as f:
                 vocab = list(f.read())
         except FileNotFoundError:
-            logger.error(f'{colorize("Vocab file not found", "FAIL")} {fileName}')
-            raise FileNotFoundError(f'Vocabulary file {fileName}.txt not found.')
+            logger.error(
+                f'{colorize("Vocab file not found", "FAIL")} '
+                f'{filename}. '
+                f'{colorize("Provide vocab file or remove model", "FAIL")}'
+            )
+            return
         logger.debug('Vocabulary imported.')
         return vocab
 
-    @staticmethod
-    async def predict(modelName, seed, temperature):
+    def predict(self, modelName, seed, temperature):
         logger.debug(f'Predicting {modelName} with seed {seed} and temperature {temperature}')
-        prediction = PredictionGetter.models[modelName].predict(seed, temperature)
+        prediction = self.builtModels[modelName].predict(seed, temperature)
         if prediction.startswith('\n'):
             prediction = prediction[1:]
         return prediction

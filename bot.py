@@ -1,11 +1,9 @@
 import os
-import logging
 
 import discord
 from dotenv import load_dotenv
 
-from utils.colorizer import colorize
-import bot.events as events
+from bot.EventHandler import EventHandler
 from utils.configReader import readConfig
 from utils.setupLogger import setupLogger
 
@@ -16,18 +14,19 @@ config = readConfig()
 logger = setupLogger('ai', level=config['bot']['logLevel'])
 setupLogger('discord')
 
-client = discord.Client()
+
+class TrustedAI(discord.Client):
+    def __init__(self):
+        super().__init__()
+        self.eventHandler = EventHandler(self)
+
+    async def on_ready(self):
+        await self.eventHandler.on_ready()
+
+    async def on_message(self, message: discord.Message):
+        await self.eventHandler.on_message(message)
 
 
-@client.event
-async def on_ready():
-    logger.log(logging.INFO, colorize(f'Logged in as {client.user.name}', 'OKGREEN'))
-    await events.on_ready(client)
+client = TrustedAI()
 
-
-@client.event
-async def on_message(message):
-    await events.on_message(client, message)
-
-
-client.run(os.environ['BOT_TOKEN'])
+client.run(os.getenv('BOT_TOKEN'))

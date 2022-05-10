@@ -39,15 +39,15 @@
 				"patience": 5,
 				"monitor": "loss",
 				"restoreBestWeights": true
-			}
-		},
-		"run": {
+			},
 			"checkpoints": {
 				"path": "checkpoints/",
 				"prefix": "checkpoint",
 				"saveBestOnly": true,
 				"monitor": "loss"
-			},
+			}
+		},
+		"run": {
 			"pickleHistory": true,
 			"vocabPath": "vocab/",
 			"runName": "testrun",
@@ -64,9 +64,11 @@
 		 }],
 		"vocabPath": "vocab/vocab_{runName}",
 		"weightsPath": "checkpoints/checkpoint_{runName}",
-		"bannedWords": []
+		"bannedWords": [],
+		"maxPredictionLength": 500
 	},
 	"bot": {
+		"commandPrefix": "ai.",
 		"serverID": "123456789",
 		"ownerID": "987654321",
 		"ownerChannelID": "123456789", 
@@ -82,7 +84,12 @@
 		"strings": {
 			"commandHandler.predictionError": "Prediction error",
 			"commandHandler.invalidTemperature": "Invalid temperature",
-			"commandHandler.bannedWord": "Banned word generated"
+			"commandHandler.bannedWord": "Banned word generated",
+			"messageLogger.activated": ":white_check_mark: Message logger activated",
+			"messageLogger.deactivated": ":white_check_mark: Message logger deactivated",
+			"predictor.activated": ":white_check_mark: Predictor activated",
+			"predictor.deactivated": ":white_check_mark: Predictor deactivated",
+			"predictor.activating": "<a:loading:973631093129482250> Activating predictor..."
 		},
 		"commandCooldown": 1,
 		"logLevel": "INFO"

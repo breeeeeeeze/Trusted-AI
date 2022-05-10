@@ -12,6 +12,7 @@ data/
 *.zip
 vocab/
 *.bat
+export/
 
 # temporary stuff
 prototype stuff/

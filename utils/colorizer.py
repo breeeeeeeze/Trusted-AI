@@ -11,6 +11,7 @@ class bcolors:
     MAGENTA = '\033[35m'
     GREEN = '\033[32m'
     BLUE = '\033[34m'
+    RED = '\033[31m'
     BACKGROUND_WHITE = '\033[47m'
 
 

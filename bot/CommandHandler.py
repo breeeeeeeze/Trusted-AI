@@ -1,10 +1,14 @@
 import logging
 import datetime
+import traceback
 from functools import wraps
+from typing import List, Union
 
 import regex as re
+import discord
 
 from bot.PredictionGetter import PredictionGetter
+from bot.MessageLogger import MessageLogger
 from utils.colorizer import colorize
 from utils.configReader import readConfig
 
@@ -15,7 +19,10 @@ logger = logging.getLogger('ai.bot.commandhandler')
 class CommandHandler:
     def __init__(self):
         self.lastCommand = datetime.datetime.now()
-        self.cooldownTime = config['bot']['commandCooldown']
+        self.cooldownTime: Union[int, float] = config['bot']['commandCooldown']
+        self.activatePredictor: bool = config['bot']['predictor']['activatePredictor']
+        self.predictionGetter = PredictionGetter(self.activatePredictor)
+        self.strings: str = config['bot']['strings']
 
     # Decorators
     class Decorators:
@@ -37,7 +44,7 @@ class CommandHandler:
         def cooldown(command):
             @wraps(command)
             async def wrapper(*args, **kwargs):
-                self = args[0]
+                self: CommandHandler = args[0]
                 if datetime.datetime.now() - self.lastCommand < datetime.timedelta(seconds=self.cooldownTime):
                     return
                 self.lastCommand = datetime.datetime.now()
@@ -47,26 +54,60 @@ class CommandHandler:
 
     # Helpers
 
-    async def processCommand(self, command, message, client, **kwargs):
-        if command in ['Decorators', 'processCommand']:
+    async def processCommand(self, command: str, message: discord.Message, client: discord.Client, **kwargs):
+        if command in ['Decorators', 'processCommand', 'initPredictionGetter']:
             return
         return await getattr(self, command)(message, client, **kwargs)
 
     # Commands
     @Decorators.ownerCommand
-    async def ping(self, message, _):
+    async def ping(self, message: discord.Message, *_):
         return await message.reply('pong')
 
     @Decorators.ownerCommand
-    async def shutdown(self, message, client):
+    async def shutdown(self, message: discord.Message, client: discord.Client):
         await message.channel.send('Shutting down...')
         return await client.close()
 
+    @Decorators.ownerCommand
+    async def logger(self, message: discord.Message, *_):
+        try:
+            command: str = message.content.split(' ')[1]
+        except KeyError:
+            return
+        if command == 'on':
+            MessageLogger.activate()
+            return await message.reply(self.strings['messageLogger.activated'], mention_author=False)
+        if command == 'off':
+            MessageLogger.deactivate()
+            return await message.reply(self.strings['messageLogger.deactivated'], mention_author=False)
+
+    @Decorators.ownerCommand
+    async def predictor(self, message, *_):
+        try:
+            command = message.content.split(' ')[1]
+        except KeyError:
+            return
+        if command == 'on':
+            reply: discord.Message = await message.reply(self.strings['predictor.activating'], mention_author=False)
+            if not self.activatePredictor:
+                self.activatePredictor = True
+                self.predictionGetter.activate()
+
+            await reply.delete()
+            return await message.reply(self.strings['predictor.activated'], mention_author=False)
+        if command == 'off':
+            self.activatePredictor = False
+            self.predictionGetter.deactivate()
+            return await message.reply(self.strings['predictor.deactivated'], mention_author=False)
+
     @Decorators.cooldown
-    async def predict(self, message, _, modelName=None):
+    async def predict(self, message: discord.Message, *_, modelName: str = None):
+        if not self.activatePredictor:
+            return
         if str(message.channel.id) not in config['bot']['predictor']['predictChannelIDs']:
             return
-        splitMessage = message.content.split(' ')[1:]
+        splitMessage: List[str] = message.content.split(' ')[1:]
         if not modelName:
             modelName = splitMessage[0]
             try:
@@ -82,15 +123,15 @@ class CommandHandler:
             splitMessage.append('\n')
         seed = ' '.join(splitMessage)
         try:
-            prediction = await PredictionGetter.predict(modelName, seed, temperature)
+            prediction: str = self.predictionGetter.predict(modelName, seed, temperature)
 
             if re.match(r'[a-zA-Z0-9_]+:\d{18}>', prediction):
                 prediction = '<:' + prediction
             if re.match(r'@', prediction):
                 prediction = '<' + prediction
             for word in config['prediction']['bannedWords']:
-                if word in prediction:
-                    return await message.reply(config['bot']['strings']['commandHandler.bannedWord'])
+                if prediction.find(word) != -1:
+                    return await message.reply(self.strings['commandHandler.bannedWord'], mention_author=False)
             logger.info(
                 (
                     f'{colorize(f"{message.author.name}#{message.author.discriminator}","OKBLUE")}'
@@ -98,7 +139,7 @@ class CommandHandler:
                     f' model: {colorize(prediction, "OKCYAN")}'
                 )
             )
-            return await message.reply(prediction)
-        except Exception as err:
-            logger.error(colorize(err, 'FAIL'))
-            return await message.reply(config['bot']['strings']['commandHandler.predictionError'])
+            return await message.reply(prediction, mention_author=False)
+        except Exception:
+            logger.error(colorize(traceback.format_exc(), 'FAIL'))
+            return await message.reply(self.strings['commandHandler.predictionError'], mention_author=False)
