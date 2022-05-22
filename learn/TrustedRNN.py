@@ -152,7 +152,7 @@ class TrustedRNN:
         if not self.model or not self.dataset:
             logger.error(f'{colorize("Model or dataset not created", "FAIL")}')
             return
-        logger.info(f'{colorize("Training model", "OKBLUE")}')
+        logger.info(f'{colorize("Training model", "OKBLUE")} {self.runName}')
         self.history = self.model.fit(
             self.dataset,
             epochs=self.nEpochs,

@@ -16,8 +16,8 @@ setupLogger('discord')
 
 
 class TrustedAI(discord.Client):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.eventHandler = EventHandler(self)
 
     async def on_ready(self):
@@ -27,6 +27,6 @@ class TrustedAI(discord.Client):
         await self.eventHandler.on_message(message)
 
 
-client = TrustedAI()
+client = TrustedAI(max_messages=None)
 
 client.run(os.getenv('BOT_TOKEN'))

@@ -21,6 +21,7 @@ test.py
 main.ipynb
 test.ipynb
 test*.txt
+linetester.ipynb
 
 # model checkpoints
 training_checkpoints/

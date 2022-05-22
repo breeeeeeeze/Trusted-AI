@@ -55,7 +55,7 @@ class CommandHandler:
     # Helpers
 
     async def processCommand(self, command: str, message: discord.Message, client: discord.Client, **kwargs):
-        if command in ['Decorators', 'processCommand', 'initPredictionGetter']:
+        if command in ['Decorators', 'processCommand', 'initPredictionGetter'] or command.startsWith('_'):
             return
         return await getattr(self, command)(message, client, **kwargs)
 
@@ -107,6 +107,7 @@ class CommandHandler:
             return
         if str(message.channel.id) not in config['bot']['predictor']['predictChannelIDs']:
             return
+        # TODO strip trailing whitespace
         splitMessage: List[str] = message.content.split(' ')[1:]
         if not modelName:
             modelName = splitMessage[0]
@@ -139,7 +140,21 @@ class CommandHandler:
                     f' model: {colorize(prediction, "OKCYAN")}'
                 )
             )
+            # FIXME prevent sending empty message
             return await message.reply(prediction, mention_author=False)
         except Exception:
             logger.error(colorize(traceback.format_exc(), 'FAIL'))
             return await message.reply(self.strings['commandHandler.predictionError'], mention_author=False)
+
+    @Decorators.cooldown
+    async def models(self, message: discord.Message, *_):
+        def f(model):
+            return model['name'], model['desc']
+
+        modelNames, modelDesc = map(list, zip(*[f(model) for model in config['prediction']['models']]))
+        embed = discord.Embed(title='Available models', color=discord.Color.dark_orange())
+        if not self.activatePredictor:
+            embed.description = 'Predictor is currently inactive. Mald at breeeze to activate.'
+        for name, desc in zip(modelNames, modelDesc):
+            embed.add_field(name=name, value=desc)
+        return await message.reply(embed=embed, mention_author=False)
