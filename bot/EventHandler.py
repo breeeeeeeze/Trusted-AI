@@ -12,20 +12,21 @@ logger = logging.getLogger('ai.bot.events')
 
 
 class EventHandler:
-    def __init__(self, client: discord.Client):
+    def __init__(self, client: discord.Client) -> None:
         self.client = client
         self.commandHandler = CommandHandler()
         self.commandPrefix: str = config['bot']['commandPrefix']
         if config['bot']['messageLogger']['activateMessageLogger']:
             MessageLogger.activate()
 
-    async def on_ready(self):
-        logger.log(logging.INFO, colorize(f'Logged in as {self.client.user.name}', 'OKGREEN'))
+    async def on_ready(self) -> None:
+        if self.client.user is not None:
+            logger.log(logging.INFO, colorize(f'Logged in as {self.client.user.name}', 'OKGREEN'))
         await self.client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='you'))
 
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message) -> None:
         channelID = str(message.channel.id)
-        if not str(message.guild.id) == config['bot']['serverID'] or message.author.bot:
+        if not str(message.guild.id) == config['bot']['serverID'] or message.author.bot:  # type: ignore
             return
 
         if channelID in config['bot']['messageLogger']['messageLoggerChannelIDs']:

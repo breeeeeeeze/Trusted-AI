@@ -2,17 +2,19 @@
 .env
 config.json
 .vscode/
+.flake8
 
 # cache
 __pycache__/
 
 # data
 export*.csv
-data/
+data*/
 *.zip
 vocab/
 *.bat
 export/
+ExportConverter.py
 
 # temporary stuff
 prototype stuff/

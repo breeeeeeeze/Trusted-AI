@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from learn.DataProcessor import DataProcessor
 from learn.TrustedRNN import TrustedRNN
@@ -14,9 +15,9 @@ logger = logging.getLogger('ai.learn.trainer')
 class Trainer:
     def __init__(self):
         self.dp = DataProcessor()
-        self.rnn = None
+        self.rnn: Optional[TrustedRNN] = None
 
-    def run(self):
+    def run(self) -> None:
         try:
             logger.info(colorize('Starting full training sequence', 'BLUE', 'BACKGROUND_WHITE'))
             text, vocab = self.dp.processInputData()

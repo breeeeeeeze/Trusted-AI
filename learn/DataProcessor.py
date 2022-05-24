@@ -1,5 +1,6 @@
 import glob
 import logging
+from typing import Tuple, List, Optional
 
 import regex as re
 import pandas as pd
@@ -12,12 +13,18 @@ logger = logging.getLogger('ai.learn.dataprocessor')
 
 
 class DataProcessor:
-    def __init__(self):
+    """
+    Class to import and process training data.
+    """
+    def __init__(self) -> None:
         self.dataframe = pd.DataFrame()
-        self.text = ''
-        self.vocab = None
+        self.text: Optional[str] = None
+        self.vocab = []
 
-    def processInputData(self):
+    def processInputData(self) -> Tuple[str, List[str]]:
+        """
+        Import and process data, returns text and vocabulary.
+        """
         self.importData()
         self.sortByTimestamp()
         self.dropColumns()
@@ -29,35 +36,61 @@ class DataProcessor:
         self.generateVocab()
         logger.info(f'{colorize("Data imported and processed", "OKGREEN")}')
         logger.info(f'{colorize("Total messages: " + str(len(self.dataframe)), "OKGREEN")}')
-        return self.text, self.vocab
+        return self.text, self.vocab  # type: ignore
 
-    def slimTo(self, n):
-        # useful for debugging
-        self.dataframe = self.dataframe[:n]
+    def slimTo(self, count: int) -> None:
+        """
+        Slim the dataframe to n rows. Useful for debugging.
 
-    def resetIndex(self):
+        :param int count: Number of rows to keep.
+        """
+        self.dataframe = self.dataframe[:count]
+
+    def resetIndex(self) -> None:
+        """
+        Reset index of the dataframe.
+        """
         self.dataframe.reset_index(drop=True, inplace=True)
         logger.debug('Reindexed.')
 
-    def getVocab(self):
+    def getVocab(self) -> List[str]:
+        """
+        Get the vocabulary.
+
+        :return: Vocabulary.
+        """
         if self.vocab:
             return self.vocab
         self.processInputData()
         return self.vocab
 
-    def exportVocab(self, fileName):
+    def exportVocab(self, fileName: str) -> None:
+        """
+        Export vocabulary to file.
+
+        :param str fileName: Filename.
+        """
         with open(fileName, 'w', encoding='utf-8') as f:
             for word in self.vocab:
                 f.write(word)
         logger.debug('Vocabulary exported.')
 
-    def importVocab(self, fileName):
+    def importVocab(self, fileName: str) -> List[str]:
+        """
+        Import vocabulary from file.
+
+        :param str fileName: Filename.
+        :return: Vocabulary.
+        """
         with open(fileName, 'r', encoding='utf-8') as f:
             self.vocab = sorted(set(f.read()))
         logger.debug('Vocabulary imported.')
         return self.vocab
 
-    def sortByTimestamp(self):
+    def sortByTimestamp(self) -> None:
+        """
+        Sort the dataframe by timestamp.
+        """
         if 'Timestamp' not in self.dataframe.columns:
             logger.error(
                 colorize(
@@ -65,22 +98,31 @@ class DataProcessor:
                     'FAIL',
                 )
             )
-        self.dataframe.sort_values('Timestamp', inplace=True)
+        self.dataframe.sort_values('Timestamp', inplace=True)  # type: ignore
         self.dataframe.drop('Timestamp', axis=1, inplace=True)
         logger.debug('Sorted by timestamp')
 
-    def importData(self):
+    def importData(self, fileName: str = '') -> None:
+        """
+        Import data from specified file or from globs specified in config (default).
+        """
         listOfDFs = []
-        for fileGlob in config['learn']['data']['inputFiles']:
-            for fileName in glob.glob(f'data\\{fileGlob}'):
-                logger.debug(f'Importing {fileName}')
-                listOfDFs.append(pd.read_csv(fileName))
+        if fileName:
+            listOfDFs.append(pd.read_csv(fileName))
+        else:
+            for fileGlob in config['learn']['data']['inputFiles']:
+                for fileName in glob.glob(f'data\\{fileGlob}'):
+                    logger.debug(f'Importing {fileName}')
+                    listOfDFs.append(pd.read_csv(fileName))
         self.dataframe = pd.concat(listOfDFs)
         if 'Contents' not in self.dataframe.columns:
             raise Exception('Contents column not found in dataframe.')
         logger.debug('Data imported.')
 
-    def dropColumns(self):
+    def dropColumns(self) -> None:
+        """
+        Drop all unnecessary columns.
+        """
         if 'ChannelID' in self.dataframe.columns:
             self.dataframe.drop('ChannelID', axis=1, inplace=True)
         if 'AuthorID' in self.dataframe.columns:
@@ -91,7 +133,10 @@ class DataProcessor:
             self.dataframe.drop('Timestamp', axis=1, inplace=True)
         logger.debug('Columns dropped.')
 
-    def dropAttachments(self):
+    def dropAttachments(self) -> None:
+        """
+        Drop rows that contain attachments, if enabled in config. Then drop the attachments column.
+        """
         if config['learn']['data']['removeRowIfAttachment']:
             self.dataframe = self.dataframe[self.dataframe['Attachments'].isnull()]
         if 'Attachments' in self.dataframe.columns:
@@ -99,7 +144,12 @@ class DataProcessor:
         logger.debug('Attachments dropped.')
 
     @staticmethod
-    def filterString(string):
+    def filterString(string: str) -> str:
+        """
+        Filter the string based on settings specified in config.
+
+        :param str string: String to filter.
+        """
         if not isinstance(string, str):
             return string
         if config['learn']['data']['onlyLowercase']:
@@ -142,20 +192,34 @@ class DataProcessor:
             string = re.sub(rf'[^{config["learn"]["data"]["allowedChars"]}]', '', string)
         elif config['learn']['data']['filterCustomChars']:
             string = re.sub(rf'[{config["learn"]["data"]["bannedChars"]}]', '', string)
+        # reverse Discords way of escaping quotes in the content field
+        string = re.sub(r'""', '"', string)
         return string
 
-    def filterContent(self):
+    def filterContent(self) -> None:
+        """
+        Apply the filter to the entire dataframe.
+        """
         self.dataframe['Contents'] = self.dataframe['Contents'].apply(self.filterString)
         logger.debug('Content filtered.')
 
-    def dropEmptyContent(self):
-        self.dataframe.dropna(subset=['Contents'], inplace=True)
+    def dropEmptyContent(self) -> None:
+        """
+        Drop all rows that are empty.
+        """
+        self.dataframe.dropna(subset=['Contents'], inplace=True)  # type: ignore
         self.dataframe.drop(self.dataframe[self.dataframe['Contents'] == ''].index, inplace=True)
         logger.debug('Empty content dropped.')
 
-    def dfToText(self):
+    def dfToText(self) -> None:
+        """
+        Convert the dataframe to a single string.
+        """
         self.text = '\n'.join(self.dataframe.loc[:, 'Contents'].values)
 
-    def generateVocab(self):
-        self.vocab = sorted(set(self.text))
+    def generateVocab(self) -> None:
+        """
+        Generate the vocabulary based on the text string
+        """
+        self.vocab = sorted(set(self.text))  # type: ignore
         logger.debug('Vocabulary generated.')

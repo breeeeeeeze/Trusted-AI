@@ -1,4 +1,5 @@
 import logging
+from typing import Optional, List, Union
 
 from learn.TrustedRNN import TrustedRNN
 from utils.configReader import readConfig
@@ -9,7 +10,7 @@ config = readConfig()
 
 
 class PredictionGetter:
-    def __init__(self, activate: bool = False):
+    def __init__(self, activate: bool = False) -> None:
         self.builtModels = {}
         self.active = activate
         self.modelSettings = config['prediction']['models']
@@ -20,19 +21,19 @@ class PredictionGetter:
         else:
             logger.info(f'{colorize("Predictor", "OKBLUE")} is {colorize("inactive", "RED")}')
 
-    def activate(self):
+    def activate(self) -> None:
         if not self.active:
             self.active = True
             self.initializeModels()
             logger.info(f'{colorize("Predictor", "OKBLUE")} is {colorize("active", "GREEN")}')
 
-    def deactivate(self):
+    def deactivate(self) -> None:
         if self.active:
             self.active = False
             self.builtModels = {}
             logger.info(f'{colorize("Predictor", "OKBLUE")} is {colorize("inactive", "RED")}')
 
-    def initializeModels(self):
+    def initializeModels(self) -> None:
         self.builtModels = {}
         for model in self.modelSettings:
             builtModel = self.buildModel(model)
@@ -41,7 +42,7 @@ class PredictionGetter:
             self.builtModels[model['name']] = builtModel
         logger.info(colorize('Models initialized', 'OKBLUE'))
 
-    def buildModel(self, model):
+    def buildModel(self, model) -> Optional[TrustedRNN]:
         logger.info(f'{colorize("Building model", "OKGREEN")} {model["name"]}')
         vocab = self.loadVocab(model)
         if not vocab:
@@ -51,7 +52,7 @@ class PredictionGetter:
         rnn.loadFromWeights()
         return rnn
 
-    def loadVocab(self, model):
+    def loadVocab(self, model) -> Optional[List[str]]:
         filename = config['prediction']['vocabPath'].replace('{runName}', model['name'])
         try:
             with open(f'{filename}.txt', 'r', encoding='utf-8') as f:
@@ -66,9 +67,11 @@ class PredictionGetter:
         logger.debug('Vocabulary imported.')
         return vocab
 
-    def predict(self, modelName, seed, temperature):
+    def predict(self, modelName: str, seed: str, temperature: Union[int, float]) -> str:
         logger.debug(f'Predicting {modelName} with seed {seed} and temperature {temperature}')
         prediction = self.builtModels[modelName].predict(seed, temperature)
         if prediction.startswith('\n'):
             prediction = prediction[1:]
+        if not prediction:
+            raise ValueError('Prediction is empty.')
         return prediction

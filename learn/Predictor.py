@@ -1,8 +1,12 @@
+from typing import Any, Optional, Tuple
+
 import tensorflow as tf
 
 
 class Predictor(tf.keras.Model):
-    def __init__(self, model, IDToChar, charToID, temperature=1.0):
+    def __init__(
+        self, model, IDToChar, charToID, temperature: float = 1.0
+    ) -> None:
         super().__init__()
         self.model = model
         self.IDToChar = IDToChar
@@ -18,7 +22,9 @@ class Predictor(tf.keras.Model):
         self.skipMask = tf.sparse.to_dense(sparseMask)
 
     @tf.function
-    def predictNextChar(self, inputs, states=None, temperature=None):
+    def predictNextChar(
+        self, inputs, states=None, temperature: Optional[float] = None
+    ) -> Tuple[Any, Any]:
         if not temperature:
             temperature = self.temperature
         inputChars = tf.strings.unicode_split(inputs, 'UTF-8')

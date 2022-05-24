@@ -2,6 +2,7 @@ import logging
 from os import path
 from importlib import import_module
 from pickle import dump
+from typing import Dict, Any, List, Optional
 
 import tensorflow as tf
 
@@ -10,17 +11,21 @@ from utils.configReader import readConfig
 from utils.colorizer import colorize
 
 config_ = readConfig()
-config = config_['learn']
+config: Dict[str, Any] = config_['learn']
 logger = logging.getLogger('ai.learn.trustedrnn')
 
 
 class TrustedRNN:
+    """
+    Class to build, train and load the RNN model
+    """
+
     def __init__(
         self,
-        vocab,
-        text=None,
+        vocab: List[str],
+        text: Optional[str] = None,
         **kwargs,
-    ):
+    ) -> None:
 
         self.runName = config['run']['runName']
         self.modelType = config['model']['modelType']
@@ -67,13 +72,19 @@ class TrustedRNN:
 
         logger.debug(f'{colorize("TrustedRNN initialized", "OKGREEN")}')
 
-    def loadFromWeights(self):
+    def loadFromWeights(self) -> None:
+        """
+        Builds the model, loads the weights from checkpoints and prepares it for prediction.
+        """
         logger.debug('Loading model with weights')
         self.makeModel()
         self.loadModelWeights(self.checkpointPrefix)
         self.makePredictor()
 
-    def makeDataset(self):
+    def makeDataset(self) -> None:
+        """
+        Create the dataset for training of the model.
+        """
         if not self.text:
             logger.error(f'{colorize("No text passed", "FAIL")}')
             return
@@ -94,7 +105,10 @@ class TrustedRNN:
         )
         logger.debug(f'{colorize("Dataset created", "OKGREEN")}')
 
-    def makeModel(self):
+    def makeModel(self) -> None:
+        """
+        Build the RNN model.
+        """
         layers = None
         if self.modelType == 'LSTM_multilayer' or self.modelType == 'BiLSTM_multilayer':
             layers = self.layers
@@ -112,10 +126,16 @@ class TrustedRNN:
         logger.debug(f'{colorize("Model created", "OKGREEN")}')
 
     def loss(self):
+        """
+        Define the loss function for the model.
+        """
         logger.debug('Using SparseCategoricalCrossentropy')
         return tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
     def checkpointCallback(self):
+        """
+        Returns the callback for saving checkpoints.
+        """
         filepath = path.join(self.checkpointPath, self.checkpointPrefix)
         return tf.keras.callbacks.ModelCheckpoint(
             filepath=filepath,
@@ -125,6 +145,9 @@ class TrustedRNN:
         )
 
     def earlyStoppingCallback(self):
+        """
+        Returns the callback for early stopping.
+        """
         return tf.keras.callbacks.EarlyStopping(
             monitor=config['training']['earlyStopping']['monitor'],
             patience=config['training']['earlyStopping']['patience'],
@@ -132,6 +155,9 @@ class TrustedRNN:
         )
 
     def tensorboardCallback(self):
+        """
+        Returns the callback for tensorboard.
+        """
         return tf.keras.callbacks.TensorBoard(
             log_dir=f'tb_logs/{self.runName}',
             histogram_freq=1,
@@ -140,7 +166,10 @@ class TrustedRNN:
             update_freq='epoch',
         )
 
-    def getCallbacks(self):
+    def getCallbacks(self) -> List[Any]:
+        """
+        Creates a list of all callbacks used in training.
+        """
         callbacks = []
         callbacks.append(self.checkpointCallback())
         if config['training']['earlyStopping']['useEarlyStopping']:
@@ -148,7 +177,10 @@ class TrustedRNN:
         callbacks.append(self.tensorboardCallback())
         return callbacks
 
-    def trainModel(self):
+    def trainModel(self) -> None:
+        """
+        Trains the model.
+        """
         if not self.model or not self.dataset:
             logger.error(f'{colorize("Model or dataset not created", "FAIL")}')
             return
@@ -160,7 +192,12 @@ class TrustedRNN:
             verbose=self.verbose,
         )
 
-    def saveModelWeights(self, filename):
+    def saveModelWeights(self, filename: str) -> None:
+        """
+        Saves the model weights to a file.
+
+        :param filename: The filename to save the model weights to.
+        """
         if not self.model:
             logger.error(f'{colorize("Model not created", "FAIL")}')
             return
@@ -168,7 +205,12 @@ class TrustedRNN:
         self.model.save_weights(filepath)
         logger.debug(f'{colorize("Model weights saved", "OKBLUE")}')
 
-    def loadModelWeights(self, filename):
+    def loadModelWeights(self, filename: str) -> None:
+        """
+        Loads the model weights from a file.
+
+        :param filename: The filename to load the model weights from.
+        """
         if not self.model:
             logger.error(f'{colorize("Model not created", "FAIL")}')
             return
@@ -176,14 +218,22 @@ class TrustedRNN:
         self.model.load_weights(filepath).expect_partial()
         logger.debug(f'{colorize("Model weights loaded", "OKBLUE")}')
 
-    def makePredictor(self):
+    def makePredictor(self) -> None:
+        """
+        Prepare the model for prediction.
+        """
         if not self.model:
             logger.error(f'{colorize("Model not created", "FAIL")}')
             return
         self.predictor = Predictor(self.model, self.IDToChar, self.charToID)
         logger.debug(f'{colorize("Predictor created", "OKGREEN")}')
 
-    def pickleHistory(self, filename):
+    def pickleHistory(self, filename: str) -> None:
+        """
+        Save the history in a pickled file.
+
+        :param filename: The filename to save the history to.
+        """
         if not self.history:
             string = 'History doesn\'t exist, train the model first'
             logger.error(f'{colorize(string, "FAIL")}')
@@ -191,20 +241,26 @@ class TrustedRNN:
         with open(filename, 'wb') as f:
             dump(self.history, f)
 
-    def predict(self, seed, temperature=None):
+    def predict(self, seed: str, temperature: Optional[float] = None) -> str:
+        """
+        Predict text based on seed using temperature.
+
+        :param str seed: The seed to use for prediction.
+        :param float temperature: The temperature to use for prediction.
+        """
         if not self.predictor:
             logger.error(f'{colorize("No predictor found, make predictor first", "FAIL")}')
-            return
+            return ''
         seed = seed.lower()
         states = None
         nextChar = tf.constant([seed])
         result = []
 
         for _ in range(self.maxPredictionLength):
-            nextChar, states = self.predictor.predictNextChar(nextChar, states, temperature=temperature)
+            nextChar, states = self.predictor.predictNextChar(nextChar, states, temperature=temperature)  # type: ignore # noqa: E501
             result.append(nextChar)
             if nextChar == '\n':
-                if len(result) > 3:
+                if len(result) > 3 and (seed + tf.strings.join(result))[0].numpy().decode('utf-8').strip():
                     break
                 else:
                     seed = ''

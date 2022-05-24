@@ -17,18 +17,27 @@ logger = logging.getLogger('ai.bot.commandhandler')
 
 
 class CommandHandler:
-    def __init__(self):
+    """
+    Class to handle bot commands
+    """
+    def __init__(self) -> None:
         self.lastCommand = datetime.datetime.now()
         self.cooldownTime: Union[int, float] = config['bot']['commandCooldown']
         self.activatePredictor: bool = config['bot']['predictor']['activatePredictor']
         self.predictionGetter = PredictionGetter(self.activatePredictor)
-        self.strings: str = config['bot']['strings']
+        self.strings: dict = config['bot']['strings']
 
     # Decorators
     class Decorators:
+        """
+        Decorators that are used in the command handler
+        """
 
         @staticmethod
         def ownerCommand(command):
+            """
+            Decorator to mark a command as owner only
+            """
             @wraps(command)
             async def wrapper(*args, **kwargs):
                 if (
@@ -42,6 +51,9 @@ class CommandHandler:
 
         @staticmethod
         def cooldown(command):
+            """
+            Decorator to mark a command as having a cooldown. Cooldowns are global, not per-command
+            """
             @wraps(command)
             async def wrapper(*args, **kwargs):
                 self: CommandHandler = args[0]
@@ -55,22 +67,28 @@ class CommandHandler:
     # Helpers
 
     async def processCommand(self, command: str, message: discord.Message, client: discord.Client, **kwargs):
-        if command in ['Decorators', 'processCommand', 'initPredictionGetter'] or command.startsWith('_'):
+        """
+        Wrapper to process a command while protecting internal functions
+        """
+        if command in ['Decorators', 'processCommand', 'initPredictionGetter'] or command.startswith('_'):
             return
         return await getattr(self, command)(message, client, **kwargs)
 
     # Commands
     @Decorators.ownerCommand
-    async def ping(self, message: discord.Message, *_):
+    async def ping(self, message: discord.Message, *_) -> None:
         return await message.reply('pong')
 
     @Decorators.ownerCommand
-    async def shutdown(self, message: discord.Message, client: discord.Client):
+    async def shutdown(self, message: discord.Message, client: discord.Client) -> None:
         await message.channel.send('Shutting down...')
         return await client.close()
 
     @Decorators.ownerCommand
-    async def logger(self, message: discord.Message, *_):
+    async def logger(self, message: discord.Message, *_) -> None:
+        """
+        Command for message logger utilities
+        """
         try:
             command: str = message.content.split(' ')[1]
         except KeyError:
@@ -83,7 +101,10 @@ class CommandHandler:
             return await message.reply(self.strings['messageLogger.deactivated'], mention_author=False)
 
     @Decorators.ownerCommand
-    async def predictor(self, message, *_):
+    async def predictor(self, message: discord.Message, *_) -> None:
+        """
+        Command for predictor utilities
+        """
         try:
             command = message.content.split(' ')[1]
         except KeyError:
@@ -102,7 +123,10 @@ class CommandHandler:
             return await message.reply(self.strings['predictor.deactivated'], mention_author=False)
 
     @Decorators.cooldown
-    async def predict(self, message: discord.Message, *_, modelName: str = None):
+    async def predict(self, message: discord.Message, *_, modelName: str = '') -> None:
+        """
+        Predict following text based on the seed given, using the model given
+        """
         if not self.activatePredictor:
             return
         if str(message.channel.id) not in config['bot']['predictor']['predictChannelIDs']:
@@ -114,7 +138,7 @@ class CommandHandler:
             try:
                 splitMessage = splitMessage[1:]
             except KeyError:
-                splitMessage = None
+                splitMessage = []
         temperature = 1.0
         if splitMessage:
             if splitMessage[0] == '-t' or splitMessage[0] == '--temperature':
@@ -135,7 +159,7 @@ class CommandHandler:
                     return await message.reply(self.strings['commandHandler.bannedWord'], mention_author=False)
             logger.info(
                 (
-                    f'{colorize(f"{message.author.name}#{message.author.discriminator}","OKBLUE")}'
+                    f'{colorize(f"{message.author.name}#{message.author.discriminator}","OKBLUE")}'  # type: ignore
                     f' requested prediction from {colorize(modelName, "OKGREEN")}'
                     f' model: {colorize(prediction, "OKCYAN")}'
                 )
@@ -147,7 +171,10 @@ class CommandHandler:
             return await message.reply(self.strings['commandHandler.predictionError'], mention_author=False)
 
     @Decorators.cooldown
-    async def models(self, message: discord.Message, *_):
+    async def models(self, message: discord.Message, *_) -> None:
+        """
+        Command to list all loaded models
+        """
         def f(model):
             return model['name'], model['desc']
 

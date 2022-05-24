@@ -15,6 +15,9 @@ class bcolors:
     BACKGROUND_WHITE = '\033[47m'
 
 
-def colorize(text, *colors):
+def colorize(text: str, *colors: str) -> str:
+    """
+    Colorize the given text for terminal output.
+    """
     colorString = ''.join(getattr(bcolors, color) for color in colors)
     return f'{colorString}{text}{bcolors.ENDC}'
